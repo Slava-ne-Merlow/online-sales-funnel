@@ -17,6 +17,7 @@ export const projectStageOptions: Array<{ value: ProjectStage; label: string }> 
 export const projectStatusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'ACTIVE', label: 'В работе' },
   { value: 'ON_HOLD', label: 'Отложена / заморожена' },
+  { value: 'LOST', label: 'Проиграно / отказ' },
   { value: 'DONE', label: 'Успешна / завершена' },
   { value: 'INACTIVE', label: 'Не активна' },
 ]

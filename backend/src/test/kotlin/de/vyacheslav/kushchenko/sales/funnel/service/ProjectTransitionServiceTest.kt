@@ -134,6 +134,26 @@ class ProjectTransitionServiceTest {
     }
 
     @Test
+    fun `allows moving project to lost status`() {
+        val actor = testActor()
+        val project = testProject(
+            currentStage = ProjectStage.NEGOTIATION,
+            currentStatus = ProjectStatus.ACTIVE,
+            createdById = actor.id!!,
+        )
+        every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
+
+        val result = projectTransitionService.transition(
+            project.id!!,
+            actor,
+            ProjectTransitionRequest(newStatus = ProjectStatusRequest.LOST),
+        )
+
+        assertThat(result.currentStatus).isEqualTo(ProjectStatus.LOST)
+        assertThat(result.currentStage).isEqualTo(ProjectStage.NEGOTIATION)
+    }
+
+    @Test
     fun `allows completing project with status only`() {
         val actor = testActor()
         val project = testProject(currentStage = ProjectStage.WAITING_FOR_PAYMENT, createdById = actor.id!!)
@@ -206,6 +226,7 @@ class ProjectTransitionServiceTest {
         assertThat(metadata.canChangeStatus).isTrue()
         assertThat(metadata.allowedStatuses).containsExactly(
             ProjectStatus.ON_HOLD,
+            ProjectStatus.LOST,
             ProjectStatus.INACTIVE,
             ProjectStatus.DONE,
         )

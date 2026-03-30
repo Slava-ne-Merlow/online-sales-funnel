@@ -278,7 +278,7 @@ export interface components {
         /** @enum {string} */
         ProjectStage: "QUALIFICATION" | "PROPOSAL" | "NEGOTIATION" | "INVOICE_ISSUED" | "PRODUCTION" | "WAITING_FOR_PAYMENT";
         /** @enum {string} */
-        ProjectStatus: "ACTIVE" | "ON_HOLD" | "DONE" | "INACTIVE";
+        ProjectStatus: "ACTIVE" | "ON_HOLD" | "LOST" | "DONE" | "INACTIVE";
         /** @enum {string} */
         ProjectSource: "TENDER" | "DIRECT_SALES" | "WEBSITE" | "GK_OSTEK";
         /** @enum {string} */
@@ -371,6 +371,7 @@ export interface components {
             totalAmount: number;
             inProgressAmount: number;
             onHoldAmount: number;
+            lostAmount: number;
             completedAmount: number;
             inactiveAmount: number;
             stageDistribution: components["schemas"]["ProjectStageDistributionItemDto"][];

@@ -219,9 +219,10 @@ class ProjectTransitionService(
     }
 
     private fun resolveAllowedStatuses(project: Project): List<ProjectStatus> = when (project.currentStatus) {
-        ProjectStatus.ACTIVE -> listOf(ProjectStatus.ON_HOLD, ProjectStatus.INACTIVE, ProjectStatus.DONE)
-        ProjectStatus.ON_HOLD -> listOf(ProjectStatus.ACTIVE, ProjectStatus.INACTIVE, ProjectStatus.DONE)
-        ProjectStatus.INACTIVE -> listOf(ProjectStatus.ACTIVE, ProjectStatus.ON_HOLD, ProjectStatus.DONE)
+        ProjectStatus.ACTIVE -> listOf(ProjectStatus.ON_HOLD, ProjectStatus.LOST, ProjectStatus.INACTIVE, ProjectStatus.DONE)
+        ProjectStatus.ON_HOLD -> listOf(ProjectStatus.ACTIVE, ProjectStatus.LOST, ProjectStatus.INACTIVE, ProjectStatus.DONE)
+        ProjectStatus.LOST -> listOf(ProjectStatus.ACTIVE, ProjectStatus.ON_HOLD, ProjectStatus.INACTIVE, ProjectStatus.DONE)
+        ProjectStatus.INACTIVE -> listOf(ProjectStatus.ACTIVE, ProjectStatus.ON_HOLD, ProjectStatus.LOST, ProjectStatus.DONE)
         ProjectStatus.DONE -> emptyList()
     }
 

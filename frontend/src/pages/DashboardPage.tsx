@@ -131,7 +131,7 @@ export function DashboardPage() {
     },
     {
       key: 'amount',
-      header: 'Сумма',
+      header: 'Текущая сумма',
       cell: (project) => formatCurrency(project.currentAmount),
       className: 'table-cell--numeric',
     },
@@ -278,7 +278,7 @@ export function DashboardPage() {
           value={formatCurrency(pipelineAmount)}
         />
         <StatCard title="В работе / отложены" value={`${statusRows.find((row) => row.key === 'ACTIVE')?.count ?? 0} / ${statusRows.find((row) => row.key === 'ON_HOLD')?.count ?? 0}`} />
-        <StatCard title="Не активны / завершены" value={`${statusRows.find((row) => row.key === 'INACTIVE')?.count ?? 0} / ${statusRows.find((row) => row.key === 'DONE')?.count ?? 0}`} />
+        <StatCard title="Не активны / проиграны / завершены" value={`${statusRows.find((row) => row.key === 'INACTIVE')?.count ?? 0} / ${statusRows.find((row) => row.key === 'LOST')?.count ?? 0} / ${statusRows.find((row) => row.key === 'DONE')?.count ?? 0}`} />
       </section>
 
       {filteredProjects.length ? (

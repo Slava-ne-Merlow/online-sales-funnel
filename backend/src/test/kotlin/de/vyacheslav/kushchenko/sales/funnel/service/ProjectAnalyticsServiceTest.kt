@@ -72,6 +72,7 @@ class ProjectAnalyticsServiceTest {
         assertThat(result.totalProjects).isEqualTo(2)
         assertThat(result.totalAmount).isEqualByComparingTo("1350.00")
         assertThat(result.inProgressAmount).isEqualByComparingTo("900.00")
+        assertThat(result.lostAmount).isEqualByComparingTo("0.00")
         assertThat(result.completedAmount).isEqualByComparingTo("450.00")
         assertThat(result.stageDistribution.first { it.stage.name == ProjectStage.INVOICE_ISSUED.name }.count).isEqualTo(1)
         assertThat(result.statusDistribution.first { it.status.name == ProjectStatus.DONE.name }.amount)

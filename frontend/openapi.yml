@@ -602,6 +602,7 @@ components:
       enum:
         - ACTIVE
         - ON_HOLD
+        - LOST
         - DONE
         - INACTIVE
 
@@ -815,6 +816,7 @@ components:
         - totalAmount
         - inProgressAmount
         - onHoldAmount
+        - lostAmount
         - completedAmount
         - inactiveAmount
         - stageDistribution
@@ -834,6 +836,8 @@ components:
         inProgressAmount:
           type: number
         onHoldAmount:
+          type: number
+        lostAmount:
           type: number
         completedAmount:
           type: number

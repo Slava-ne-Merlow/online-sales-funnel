@@ -65,6 +65,7 @@ class ProjectAnalyticsService(
             totalAmount = totalAmount,
             inProgressAmount = projects.amountForStatus(ProjectStatus.ACTIVE),
             onHoldAmount = projects.amountForStatus(ProjectStatus.ON_HOLD),
+            lostAmount = projects.amountForStatus(ProjectStatus.LOST),
             completedAmount = projects.amountForStatus(ProjectStatus.DONE),
             inactiveAmount = projects.amountForStatus(ProjectStatus.INACTIVE),
             stageDistribution = ProjectStage.entries.map { stage ->

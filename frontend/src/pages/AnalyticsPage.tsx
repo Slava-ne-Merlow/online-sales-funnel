@@ -40,7 +40,7 @@ const periodOptions: Array<{ value: AnalyticsPeriod; label: string }> = [
 ]
 
 const chartPalette = ['#244a8f', '#3d6db4', '#6f8fc6', '#8ba6d1', '#c2d0e6', '#445d7a', '#8f9fb4']
-const statusPalette = ['#2f6a44', '#b27a28', '#2d5f8f', '#8f3f3f']
+const statusPalette = ['#2f6a44', '#b27a28', '#8f3f3f', '#2d5f8f', '#6a6f7a']
 
 function ChartCard({
   title,
@@ -177,7 +177,7 @@ export function AnalyticsPage() {
         <StatCard title="Всего проектов" value={formatNumber(analytics.totalProjects)} />
         <StatCard title="Общая сумма" value={formatCurrency(analytics.totalAmount)} />
         <StatCard title="В работе / отложено" value={`${formatCurrency(analytics.inProgressAmount)} / ${formatCurrency(analytics.onHoldAmount)}`} />
-        <StatCard title="Не активно / завершено" value={`${formatCurrency(analytics.inactiveAmount)} / ${formatCurrency(analytics.completedAmount)}`} />
+        <StatCard title="Не активно / проиграно / завершено" value={`${formatCurrency(analytics.inactiveAmount)} / ${formatCurrency(analytics.lostAmount)} / ${formatCurrency(analytics.completedAmount)}`} />
       </section>
 
       <div className="chart-grid chart-grid--triple">

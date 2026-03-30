@@ -51,8 +51,10 @@ function getStatusTone(status: Project['currentStatus']) {
       return 'success'
     case 'ON_HOLD':
       return 'warning'
-    case 'INACTIVE':
+    case 'LOST':
       return 'danger'
+    case 'INACTIVE':
+      return 'neutral'
     case 'DONE':
       return 'info'
     default:
@@ -119,7 +121,7 @@ export function ProjectsPage() {
     },
     {
       key: 'amount',
-      header: 'Сумма',
+      header: 'Текущая сумма',
       cell: (project) => formatCurrency(project.currentAmount),
       className: 'table-cell--numeric',
     },
