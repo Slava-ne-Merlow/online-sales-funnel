@@ -1,0 +1,115 @@
+databaseChangeLog:
+  - changeSet:
+      id: 19-create-projects-table
+      author: codex
+      changes:
+        - createTable:
+            tableName: projects
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: NUMERIC(19,2)
+              - column:
+                  name: global_comment
+                  type: TEXT
+              - column:
+                  name: current_stage
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: current_status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: paused_from_stage
+                  type: VARCHAR(50)
+              - column:
+                  name: created_by
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: responsible_user_id
+                  type: UUID
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: projects
+            baseColumnNames: created_by
+            constraintName: fk_projects_created_by_users
+            referencedTableName: users
+            referencedColumnNames: id
+        - addForeignKeyConstraint:
+            baseTableName: projects
+            baseColumnNames: responsible_user_id
+            constraintName: fk_projects_responsible_user_users
+            referencedTableName: users
+            referencedColumnNames: id
+        - createIndex:
+            tableName: projects
+            indexName: idx_projects_current_stage
+            columns:
+              - column:
+                  name: current_stage
+        - createIndex:
+            tableName: projects
+            indexName: idx_projects_current_status
+            columns:
+              - column:
+                  name: current_status
+        - createIndex:
+            tableName: projects
+            indexName: idx_projects_source
+            columns:
+              - column:
+                  name: source
+        - createIndex:
+            tableName: projects
+            indexName: idx_projects_created_by
+            columns:
+              - column:
+                  name: created_by
+        - createIndex:
+            tableName: projects
+            indexName: idx_projects_responsible_user_id
+            columns:
+              - column:
+                  name: responsible_user_id
+        - createIndex:
+            tableName: projects
+            indexName: idx_projects_created_at
+            columns:
+              - column:
+                  name: created_at
+        - createIndex:
+            tableName: projects
+            indexName: idx_projects_updated_at
+            columns:
+              - column:
+                  name: updated_at

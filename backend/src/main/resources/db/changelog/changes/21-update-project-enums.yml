@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 21-update-project-enums
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              update projects
+              set current_stage = case current_stage
+                when 'LANDSCAPE' then 'QUALIFICATION'
+                when 'CONTRACT' then 'INVOICE_ISSUED'
+                when 'FULFILLMENT' then 'PRODUCTION'
+                when 'CLOSED_PAID' then 'WAITING_FOR_PAYMENT'
+                else current_stage
+              end,
+              current_status = case current_status
+                when 'PAUSED' then 'ON_HOLD'
+                when 'LOST' then 'INACTIVE'
+                when 'GARBAGE' then 'INACTIVE'
+                else current_status
+              end,
+              source = case source
+                when 'GLASS_GROUP' then 'GK_OSTEK'
+                else source
+              end,
+              paused_from_stage = null;
+
+              update project_history
+              set old_stage = case old_stage
+                when 'LANDSCAPE' then 'QUALIFICATION'
+                when 'CONTRACT' then 'INVOICE_ISSUED'
+                when 'FULFILLMENT' then 'PRODUCTION'
+                when 'CLOSED_PAID' then 'WAITING_FOR_PAYMENT'
+                else old_stage
+              end,
+              new_stage = case new_stage
+                when 'LANDSCAPE' then 'QUALIFICATION'
+                when 'CONTRACT' then 'INVOICE_ISSUED'
+                when 'FULFILLMENT' then 'PRODUCTION'
+                when 'CLOSED_PAID' then 'WAITING_FOR_PAYMENT'
+                else new_stage
+              end,
+              old_status = case old_status
+                when 'PAUSED' then 'ON_HOLD'
+                when 'LOST' then 'INACTIVE'
+                when 'GARBAGE' then 'INACTIVE'
+                else old_status
+              end,
+              new_status = case new_status
+                when 'PAUSED' then 'ON_HOLD'
+                when 'LOST' then 'INACTIVE'
+                when 'GARBAGE' then 'INACTIVE'
+                else new_status
+              end,
+              old_source = case old_source
+                when 'GLASS_GROUP' then 'GK_OSTEK'
+                else old_source
+              end,
+              new_source = case new_source
+                when 'GLASS_GROUP' then 'GK_OSTEK'
+                else new_source
+              end;

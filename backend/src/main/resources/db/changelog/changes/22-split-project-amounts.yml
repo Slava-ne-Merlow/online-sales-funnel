@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 22-split-project-amounts
+      author: codex
+      changes:
+        - renameColumn:
+            tableName: projects
+            oldColumnName: amount
+            newColumnName: initial_amount
+            columnDataType: NUMERIC(19,2)
+        - addColumn:
+            tableName: projects
+            columns:
+              - column:
+                  name: current_amount
+                  type: NUMERIC(19,2)
+        - sql:
+            dbms: postgresql
+            sql: |
+              update projects
+              set current_amount = initial_amount
+              where current_amount is null;

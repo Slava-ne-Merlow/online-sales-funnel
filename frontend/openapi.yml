@@ -1,0 +1,971 @@
+openapi: 3.0.3
+info:
+  title: Sales Funnel Template API
+  version: 1.0.0
+  description: API шаблона с авторизацией, пользователями и CRM-модулем воронки продаж.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+tags:
+  - name: Ping
+  - name: Auth
+  - name: Users
+  - name: Projects
+paths:
+  /api/ping:
+    get:
+      tags:
+        - Ping
+      summary: Check service health
+      operationId: ping
+      security: []
+      responses:
+        '200':
+          description: Service is available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /api/auth/sign-in:
+    post:
+      tags:
+        - Auth
+      summary: Sign in
+      operationId: signIn
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+      responses:
+        '200':
+          description: User authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /api/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register bootstrap user
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /api/auth/change-password:
+    post:
+      tags:
+        - Auth
+      summary: Change password
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed
+        '400':
+          description: Invalid old password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /api/users/register:
+    post:
+      tags:
+        - Auth
+      summary: Create user account and send credentials by email
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /api/users/me:
+    get:
+      tags:
+        - Users
+      summary: Get current user
+      operationId: getMe
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+    patch:
+      tags:
+        - Users
+      summary: Update current user
+      operationId: updateMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+
+  /api/users:
+    get:
+      tags:
+        - Users
+      summary: Get users with role USER
+      description: Available only for ADMIN. Returns users with role USER for responsible user selection.
+      operationId: getUsers
+      responses:
+        '200':
+          description: Users with role USER
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDto'
+
+  /api/projects:
+    post:
+      tags:
+        - Projects
+      summary: Create project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '200':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDto'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+    get:
+      tags:
+        - Projects
+      summary: Get projects
+      operationId: getProjects
+      parameters:
+        - name: currentStage
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProjectStage'
+        - name: currentStatus
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProjectStatus'
+        - name: source
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProjectSource'
+        - name: createdBy
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: responsibleUser
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: createdAtFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: createdAtTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProjectSortField'
+        - name: sortDirection
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProjectSortDirection'
+      responses:
+        '200':
+          description: Projects list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectDto'
+
+  /api/projects/analytics:
+    get:
+      tags:
+        - Projects
+      summary: Get aggregated project analytics
+      operationId: getProjectAnalytics
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/AnalyticsPeriod'
+        - name: source
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProjectSource'
+        - name: responsibleUser
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Aggregated project analytics for dashboards and charts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectAnalyticsDto'
+
+  /api/projects/{projectId}:
+    get:
+      tags:
+        - Projects
+      summary: Get project by id
+      operationId: getProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDto'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+    patch:
+      tags:
+        - Projects
+      summary: Update mutable project fields
+      operationId: updateProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDto'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /api/projects/{projectId}/transition:
+    post:
+      tags:
+        - Projects
+      summary: Change project stage and or status
+      operationId: transitionProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectTransitionRequest'
+      responses:
+        '200':
+          description: Project transitioned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDto'
+        '400':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /api/projects/{projectId}/advance:
+    post:
+      tags:
+        - Projects
+      summary: Move project to the next stage on the main funnel route
+      operationId: advanceProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectAdvanceRequest'
+      responses:
+        '200':
+          description: Project advanced to the next stage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDto'
+        '400':
+          description: Cannot advance project from current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /api/projects/{projectId}/history:
+    get:
+      tags:
+        - Projects
+      summary: Get project history
+      operationId: getProjectHistory
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectHistoryDto'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    StatusResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    Role:
+      type: string
+      enum:
+        - USER
+        - ADMIN
+
+    UserDto:
+      type: object
+      required:
+        - id
+        - email
+        - name
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - name
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 8
+
+    RegisterUserRequest:
+      type: object
+      required:
+        - email
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 1
+
+    SignInRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - oldPassword
+        - newPassword
+      properties:
+        oldPassword:
+          type: string
+          minLength: 8
+        newPassword:
+          type: string
+          minLength: 8
+
+    UserUpdateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+
+    AuthResponse:
+      type: object
+      required:
+        - accessToken
+        - user
+      properties:
+        accessToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserDto'
+
+    ProjectStage:
+      type: string
+      enum:
+        - QUALIFICATION
+        - PROPOSAL
+        - NEGOTIATION
+        - INVOICE_ISSUED
+        - PRODUCTION
+        - WAITING_FOR_PAYMENT
+
+    ProjectStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - ON_HOLD
+        - DONE
+        - INACTIVE
+
+    ProjectSource:
+      type: string
+      enum:
+        - TENDER
+        - DIRECT_SALES
+        - WEBSITE
+        - GK_OSTEK
+
+    AnalyticsPeriod:
+      type: string
+      enum:
+        - LAST_WEEK
+        - LAST_MONTH
+        - LAST_YEAR
+        - ALL_TIME
+
+    ProjectEventType:
+      type: string
+      enum:
+        - CREATED
+        - STAGE_CHANGED
+        - STATUS_CHANGED
+        - STAGE_STATUS_CHANGED
+        - AMOUNT_CHANGED
+        - GLOBAL_COMMENT_CHANGED
+        - SOURCE_SET
+        - RESTORED_FROM_PAUSE
+
+    ProjectSortField:
+      type: string
+      enum:
+        - CREATED_AT
+        - UPDATED_AT
+        - AMOUNT
+
+    ProjectSortDirection:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    ProjectDto:
+      type: object
+      required:
+        - id
+        - title
+        - source
+        - currentStage
+        - currentStatus
+        - createdById
+        - canAdvanceStage
+        - canChangeStatus
+        - allowedStatuses
+        - allowedStageTransitions
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        source:
+          $ref: '#/components/schemas/ProjectSource'
+        initialAmount:
+          type: number
+        currentAmount:
+          type: number
+        globalComment:
+          type: string
+        currentStage:
+          $ref: '#/components/schemas/ProjectStage'
+        currentStatus:
+          $ref: '#/components/schemas/ProjectStatus'
+        pausedFromStage:
+          $ref: '#/components/schemas/ProjectStage'
+        createdById:
+          type: string
+          format: uuid
+        createdByName:
+          type: string
+        responsibleUserId:
+          type: string
+          format: uuid
+        responsibleUserName:
+          type: string
+        nextStage:
+          $ref: '#/components/schemas/ProjectStage'
+        canAdvanceStage:
+          type: boolean
+        canChangeStatus:
+          type: boolean
+        allowedStatuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectStatus'
+        allowedStageTransitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectStage'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateProjectRequest:
+      type: object
+      required:
+        - title
+        - source
+      properties:
+        title:
+          type: string
+          minLength: 1
+        source:
+          $ref: '#/components/schemas/ProjectSource'
+        initialAmount:
+          type: number
+        globalComment:
+          type: string
+        responsibleUserId:
+          type: string
+          format: uuid
+          description: |
+            Optional only for ADMIN. When USER creates a project, backend automatically assigns responsibleUserId to the current user.
+            If USER provides another user's id, request is rejected.
+            When ADMIN omits this field, responsibleUserId remains null.
+
+    UpdateProjectRequest:
+      type: object
+      properties:
+        currentAmount:
+          type: number
+        globalComment:
+          type: string
+
+    ProjectAdvanceRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+
+    ProjectTransitionRequest:
+      type: object
+      properties:
+        newStage:
+          $ref: '#/components/schemas/ProjectStage'
+        newStatus:
+          $ref: '#/components/schemas/ProjectStatus'
+        comment:
+          type: string
+
+    ProjectHistoryDto:
+      type: object
+      required:
+        - id
+        - projectId
+        - eventType
+        - actorUserId
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        eventType:
+          $ref: '#/components/schemas/ProjectEventType'
+        oldStage:
+          $ref: '#/components/schemas/ProjectStage'
+        newStage:
+          $ref: '#/components/schemas/ProjectStage'
+        oldStatus:
+          $ref: '#/components/schemas/ProjectStatus'
+        newStatus:
+          $ref: '#/components/schemas/ProjectStatus'
+        oldAmount:
+          type: number
+        newAmount:
+          type: number
+        oldGlobalComment:
+          type: string
+        newGlobalComment:
+          type: string
+        oldSource:
+          $ref: '#/components/schemas/ProjectSource'
+        newSource:
+          $ref: '#/components/schemas/ProjectSource'
+        comment:
+          type: string
+        actorUserId:
+          type: string
+          format: uuid
+        actorUserName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ProjectAnalyticsDto:
+      type: object
+      required:
+        - period
+        - totalProjects
+        - totalAmount
+        - inProgressAmount
+        - onHoldAmount
+        - completedAmount
+        - inactiveAmount
+        - stageDistribution
+        - statusDistribution
+        - sourceDistribution
+        - periodTrend
+        - funnelSummary
+        - topProjects
+      properties:
+        period:
+          $ref: '#/components/schemas/AnalyticsPeriod'
+        totalProjects:
+          type: integer
+          format: int32
+        totalAmount:
+          type: number
+        inProgressAmount:
+          type: number
+        onHoldAmount:
+          type: number
+        completedAmount:
+          type: number
+        inactiveAmount:
+          type: number
+        stageDistribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectStageDistributionItemDto'
+        statusDistribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectStatusDistributionItemDto'
+        sourceDistribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectSourceDistributionItemDto'
+        periodTrend:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectTrendPointDto'
+        funnelSummary:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectFunnelSummaryItemDto'
+        topProjects:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopProjectDto'
+
+    ProjectStageDistributionItemDto:
+      type: object
+      required:
+        - stage
+        - count
+        - amount
+        - percentOfTotalAmount
+      properties:
+        stage:
+          $ref: '#/components/schemas/ProjectStage'
+        count:
+          type: integer
+          format: int32
+        amount:
+          type: number
+        percentOfTotalAmount:
+          type: number
+
+    ProjectStatusDistributionItemDto:
+      type: object
+      required:
+        - status
+        - count
+        - amount
+        - percentOfTotalAmount
+      properties:
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        count:
+          type: integer
+          format: int32
+        amount:
+          type: number
+        percentOfTotalAmount:
+          type: number
+
+    ProjectSourceDistributionItemDto:
+      type: object
+      required:
+        - source
+        - count
+        - amount
+        - percentOfTotalAmount
+      properties:
+        source:
+          $ref: '#/components/schemas/ProjectSource'
+        count:
+          type: integer
+          format: int32
+        amount:
+          type: number
+        percentOfTotalAmount:
+          type: number
+
+    ProjectTrendPointDto:
+      type: object
+      required:
+        - bucketLabel
+        - createdCount
+        - createdAmount
+      properties:
+        bucketLabel:
+          type: string
+        createdCount:
+          type: integer
+          format: int32
+        createdAmount:
+          type: number
+
+    ProjectFunnelSummaryItemDto:
+      type: object
+      required:
+        - stage
+        - count
+        - amount
+      properties:
+        stage:
+          $ref: '#/components/schemas/ProjectStage'
+        count:
+          type: integer
+          format: int32
+        amount:
+          type: number
+
+    TopProjectDto:
+      type: object
+      required:
+        - projectId
+        - title
+        - currentStage
+        - currentStatus
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        amount:
+          type: number
+        currentStage:
+          $ref: '#/components/schemas/ProjectStage'
+        currentStatus:
+          $ref: '#/components/schemas/ProjectStatus'
+        responsibleUserName:
+          type: string

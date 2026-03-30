@@ -1,0 +1,75 @@
+include:
+  - project: pipelines/pipelines
+    ref: master
+    file:
+      - "/jobs/build.yaml"
+      - "/jobs/docker.yaml"
+      - "/jobs/rules.yaml"
+
+.global-variables:
+  variables:
+    SSH_USER: "$ENV_SSH_USER"
+    SSH_HOST: "$ENV_SSH_HOST"
+    SSH_PRIVATE_KEY_BASE64: "$ENV_PRIVATE_KEY_BASE64"
+
+stages:
+  - test
+  - build
+  - deploy
+
+test:
+  stage: test
+  image: gradle:8.12.1-jdk17
+  extends:
+    - .rules-merge-or-master
+  before_script:
+    - export GRADLE_USER_HOME=`pwd`/.gradle
+  script:
+    - gradle test --tests "de.teamnoco.loyalty.service.*" --tests "de.teamnoco.loyalty.util.*"
+  artifacts:
+    when: always
+    reports:
+      junit: build/test-results/test/**/TEST-*.xml
+    paths:
+      - build/reports/tests/test/
+      - build/test-results/test/
+    expire_in: 1 week
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+
+build:
+  stage: build
+  variables:
+    IMAGE_TAG: $CI_COMMIT_REF_SLUG
+  extends:
+    - .build
+    - .rules-merge-or-master
+
+deploy:
+  extends:
+    - .ssh
+    - .global-variables
+    - .rules-master
+  stage: deploy
+  variables:
+    DOCKERFILE_PATH: Dockerfile
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+    DOCKER_DRIVER: overlay2
+    PRUNE_COMMAND: "docker system prune -f -a"
+    CONTAINER_NAME_SUFFIX: ""
+  script:
+    - apk add envsubst rsync
+    - envsubst < .env-template > .env
+    - AUTH_COMMAND="echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY --username $CI_REGISTRY_USER --password-stdin";
+    - ssh $SSH_ADDRESS "$AUTH_COMMAND"
+    - rsync -avz -e "ssh -p 22" --progress .env docker-compose.yml $SSH_ADDRESS:$HOST_DIR/backend
+    - rsync -avz -e "ssh -p 22" --progress config/ $SSH_ADDRESS:$HOST_DIR/backend/config
+    - START_COMMAND="docker compose pull && docker compose down && docker compose up -d"
+    - ssh $SSH_ADDRESS "cd $HOST_DIR/backend && $START_COMMAND"
+    - ssh $SSH_ADDRESS "$PRUNE_COMMAND"

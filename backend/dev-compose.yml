@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+    ports:
+      - '5432:5432'
+    volumes:
+      - 'postgres-data-dev:/var/lib/postgresql/data'
+  prometheus:
+    image: prom/prometheus:latest
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '9090:9090'
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.route-prefix=/prometheus'
+      - '--web.external-url=http://0.0.0.0:9090/prometheus/'
+    volumes:
+      - 'prometheus-data-dev:/prometheus'
+      - './config/prometheus/prometheus-dev.yml:/etc/prometheus/prometheus.yml'
+  grafana:
+    image: grafana/grafana-enterprise:latest
+    ports:
+      - '3000:3000'
+    volumes:
+      - 'grafana-data-dev:/var/lib/grafana'
+      - './config/grafana/provisioning:/etc/grafana/provisioning:ro'
+  minio:
+    image: minio/minio:latest
+    ports:
+      - '9000:9000'
+    environment:
+      MINIO_ACCESS_KEY: ${S3_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${S3_SECRET_KEY}
+    volumes:
+      - 'minio-data-dev:/data'
+    command: server /data
+
+volumes:
+  postgres-data-dev:
+  grafana-data-dev:
+  prometheus-data-dev:
+  minio-data-dev:

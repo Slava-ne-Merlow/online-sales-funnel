@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/1-create-users-table.yml
+  - include:
+      file: db/changelog/changes/18-create-mail-outbox-table.yml
+  - include:
+      file: db/changelog/changes/19-create-projects-table.yml
+  - include:
+      file: db/changelog/changes/20-create-project-history-table.yml
+  - include:
+      file: db/changelog/changes/21-update-project-enums.yml
+  - include:
+      file: db/changelog/changes/22-split-project-amounts.yml

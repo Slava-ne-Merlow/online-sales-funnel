@@ -1,0 +1,91 @@
+name: Build Docker images (air-gapped)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 1.2.3)'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*'
+      - '*.*.*'
+
+jobs:
+  build-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ---------- Backend ----------
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Build backend jar
+        working-directory: backend
+        run: ./gradlew --no-daemon clean bootJar
+
+      - name: Build backend image
+        run: |
+          docker build \
+            -t payment-backend:${VERSION} \
+            -f backend/Dockerfile \
+            backend
+
+      # ---------- Frontend ----------
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            -t payment-frontend:${VERSION} \
+            -f frontend/Dockerfile \
+            frontend
+
+      # ---------- Infra images ----------
+      - name: Pull infra images
+        run: |
+          docker pull postgres:15.6
+
+      # ---------- Save all images ----------
+      - name: Save docker images
+        run: |
+          mkdir -p artifacts
+          docker save \
+            payment-backend:${VERSION} \
+            payment-frontend:${VERSION} \
+            postgres:15.6 \
+            -o artifacts/images_${VERSION}.tar
+
+      - name: Upload images artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images-${{ env.VERSION }}
+          path: artifacts/images_${{ env.VERSION }}.tar

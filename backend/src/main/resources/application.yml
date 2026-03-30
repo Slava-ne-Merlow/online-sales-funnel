@@ -1,0 +1,77 @@
+spring:
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:25}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: false
+
+  application:
+    name: Sales Funnel Backend
+  docker:
+    compose:
+      file: dev-compose.yml
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+    url: ${POSTGRES_JDBC_URL}
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+jwt:
+  secret: ${JWT_SECRET:changeme-dev-secret-minimum-32-characters-required-for-hmac-sha256-algorithm}
+  access-token-expiration: 604800000
+
+management:
+  health:
+    mail:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+
+springdoc:
+  paths-to-match: /api/**
+  api-docs:
+    path: /docs/v3
+  swagger-ui:
+    path: /docs/
+
+server:
+  port: ${SERVER_PORT:8080}
+  compression:
+    enabled: true
+    min-response-size: 1024
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain,text/css,text/javascript,application/javascript
+
+logging:
+  level:
+    root: INFO
+    de.vyacheslav.kushchenko.sales.funnel: DEBUG
+
+app:
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
+  mail:
+    provider: ${MAIL_PROVIDER:python}
+    bccAdmin: ${MAIL_BCC_ADMIN:}
+    from: ${MAIL_FROM:"Sales Funnel <noreply@example.com>"}
+
+    python:
+      command: ${MAIL_PYTHON_COMMAND:python3}
+      script: ${MAIL_PYTHON_SCRIPT:./mail/send_mail.py}
+      timeoutSeconds: ${MAIL_PYTHON_TIMEOUT_SECONDS:20}
+
+    outbox:
+      pollMs: ${MAIL_OUTBOX_POLL_MS:2000}
