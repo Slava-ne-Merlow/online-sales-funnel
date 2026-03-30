@@ -36,6 +36,7 @@ Set at least:
 
 - `APP_VERSION`
 - `FRONTEND_PORT`
+- `BACKEND_PORT`
 - `POSTGRES_DB`
 - `POSTGRES_USERNAME`
 - `POSTGRES_PASSWORD`
@@ -59,7 +60,8 @@ docker compose up -d
 After startup:
 
 - frontend will be available on `http://<vm-host>:<FRONTEND_PORT>`
-- backend is not published to the host and is reachable only from the frontend container
+- backend API will be available on `http://<vm-host>:<BACKEND_PORT>`
+- frontend will still proxy `/api` to backend internally
 
 ## Why this works without internet
 
@@ -67,4 +69,4 @@ After startup:
 - every service has `pull_policy: never`
 - all required images are already inside `images_<version>.tar`
 - frontend talks to backend through Nginx proxy on `/api`, so no rebuild is needed for API URL
-- only frontend is exposed on the VM, which reduces port conflicts with existing applications
+- frontend and backend ports are configurable through `.env`, so they can be moved away from ports already used on the VM

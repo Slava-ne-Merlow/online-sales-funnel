@@ -21,6 +21,8 @@ services:
     pull_policy: never
     networks:
       - default
+    ports:
+      - '${BACKEND_PORT:-18080}:8080'
     environment:
       SERVER_PORT: 8080
       POSTGRES_JDBC_URL: ${POSTGRES_JDBC_URL}
