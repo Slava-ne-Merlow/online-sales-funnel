@@ -1,10 +1,10 @@
-name: Build Docker images (air-gapped)
+name: Build Air-Gapped Release Bundle
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version (e.g. 1.2.3)'
+        description: 'Release version used in image tags and artifact names, for example 1.2.3'
         required: true
         type: string
   push:
@@ -15,12 +15,16 @@ on:
 jobs:
   build-images:
     runs-on: ubuntu-latest
+    env:
+      BACKEND_IMAGE_NAME: online-sales-funnel-backend
+      FRONTEND_IMAGE_NAME: online-sales-funnel-frontend
+      POSTGRES_IMAGE: postgres:15.6
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Resolve version
+      - name: Resolve release version
         id: version
         shell: bash
         run: |
@@ -50,7 +54,7 @@ jobs:
       - name: Build backend image
         run: |
           docker build \
-            -t payment-backend:${VERSION} \
+            -t ${BACKEND_IMAGE_NAME}:${VERSION} \
             -f backend/Dockerfile \
             backend
 
@@ -65,27 +69,29 @@ jobs:
       - name: Build frontend image
         run: |
           docker build \
-            -t payment-frontend:${VERSION} \
+            -t ${FRONTEND_IMAGE_NAME}:${VERSION} \
             -f frontend/Dockerfile \
             frontend
 
-      # ---------- Infra images ----------
-      - name: Pull infra images
+      - name: Pull infra images for offline deployment
         run: |
-          docker pull postgres:15.6
+          docker pull ${POSTGRES_IMAGE}
 
-      # ---------- Save all images ----------
-      - name: Save docker images
+      - name: Package release bundle
         run: |
-          mkdir -p artifacts
+          mkdir -p artifacts/release
           docker save \
-            payment-backend:${VERSION} \
-            payment-frontend:${VERSION} \
-            postgres:15.6 \
-            -o artifacts/images_${VERSION}.tar
+            ${BACKEND_IMAGE_NAME}:${VERSION} \
+            ${FRONTEND_IMAGE_NAME}:${VERSION} \
+            ${POSTGRES_IMAGE} \
+            -o artifacts/release/images_${VERSION}.tar
+          cp docker-compose.yml artifacts/release/docker-compose.yml
+          cp DEPLOY-AIRGAP.md artifacts/release/DEPLOY-AIRGAP.md
+          cp deploy/.env.example artifacts/release/.env.example
+          tar -czf artifacts/airgap-release_${VERSION}.tar.gz -C artifacts/release .
 
-      - name: Upload images artifact
+      - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: docker-images-${{ env.VERSION }}
-          path: artifacts/images_${{ env.VERSION }}.tar
+          name: airgap-release-${{ env.VERSION }}
+          path: artifacts/airgap-release_${{ env.VERSION }}.tar.gz

@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:latest
+    image: ${POSTGRES_IMAGE:-postgres:15.6}
+    pull_policy: never
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USERNAME}
@@ -16,10 +17,8 @@ services:
     restart: unless-stopped
 
   app:
-    build:
-      context: ./backend
-    ports:
-      - '8080:8080'
+    image: ${BACKEND_IMAGE:-online-sales-funnel-backend}:${APP_VERSION}
+    pull_policy: never
     networks:
       - default
     environment:
@@ -34,57 +33,17 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: [ 'CMD', 'curl', '-f', 'http://0.0.0.0:8080/actuator/health' ]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - '8001:9090'
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--web.route-prefix=/prometheus'
-      - '--web.external-url=http://0.0.0.0:9090/prometheus/'
-    healthcheck:
-      test: [ 'CMD', 'wget', '-q', '-O', '-', 'http://0.0.0.0:9090/prometheus/-/healthy' ]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    volumes:
-      - 'prometheus-data:/prometheus'
-      - './backend/config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana-enterprise
-    depends_on:
-      prometheus:
-        condition: service_healthy
-    environment:
-      GF_SERVER_ROOT_URL: http://0.0.0.0:3000/grafana/
-      GF_SERVER_SERVE_FROM_SUB_PATH: true
-    ports:
-      - '8002:3000'
-    volumes:
-      - 'grafana-data:/var/lib/grafana'
-      - './backend/config/grafana/provisioning:/etc/grafana/provisioning:ro'
-    healthcheck:
-      test: [ 'CMD', 'curl', '-f', 'http://0.0.0.0:3000/api/health' ]
+      test: [ 'CMD', 'curl', '-f', 'http://127.0.0.1:8080/actuator/health' ]
       interval: 10s
       timeout: 3s
       retries: 5
     restart: unless-stopped
 
   frontend:
-    environment:
-      VITE_API_URL: ${VITE_API_URL}
-    build:
-      context: ./frontend
+    image: ${FRONTEND_IMAGE:-online-sales-funnel-frontend}:${APP_VERSION}
+    pull_policy: never
     ports:
-      - '3000:80'
+      - '${FRONTEND_PORT:-13000}:80'
     depends_on:
       app:
         condition: service_healthy
@@ -93,5 +52,3 @@ services:
 
 volumes:
   postgres-data:
-  grafana-data:
-  prometheus-data:
