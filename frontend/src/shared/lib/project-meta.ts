@@ -8,10 +8,9 @@ import type {
 export const projectStageOptions: Array<{ value: ProjectStage; label: string }> = [
   { value: 'QUALIFICATION', label: 'Проработка' },
   { value: 'PROPOSAL', label: 'КП' },
-  { value: 'NEGOTIATION', label: 'Переговоры' },
-  { value: 'INVOICE_ISSUED', label: 'Выставлен счет' },
-  { value: 'PRODUCTION', label: 'Производство' },
-  { value: 'WAITING_FOR_PAYMENT', label: 'Ожидаем оплату' },
+  { value: 'CONTRACTED', label: 'Законтрактован' },
+  { value: 'INVOICE_ISSUED', label: 'Счет' },
+  { value: 'WAITING_FOR_PAYMENT', label: 'Ожидаем доплату' },
 ]
 
 export const projectStatusOptions: Array<{ value: ProjectStatus; label: string }> = [

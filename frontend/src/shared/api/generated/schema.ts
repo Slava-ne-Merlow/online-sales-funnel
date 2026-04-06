@@ -276,7 +276,7 @@ export interface components {
             user: components["schemas"]["UserDto"];
         };
         /** @enum {string} */
-        ProjectStage: "QUALIFICATION" | "PROPOSAL" | "NEGOTIATION" | "INVOICE_ISSUED" | "PRODUCTION" | "WAITING_FOR_PAYMENT";
+        ProjectStage: "QUALIFICATION" | "PROPOSAL" | "CONTRACTED" | "INVOICE_ISSUED" | "WAITING_FOR_PAYMENT";
         /** @enum {string} */
         ProjectStatus: "ACTIVE" | "ON_HOLD" | "LOST" | "DONE" | "INACTIVE";
         /** @enum {string} */

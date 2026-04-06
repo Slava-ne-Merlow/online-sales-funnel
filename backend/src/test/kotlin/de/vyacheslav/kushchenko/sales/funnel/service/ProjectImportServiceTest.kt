@@ -7,12 +7,14 @@ import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectStatus
 import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectRepository
 import de.vyacheslav.kushchenko.sales.funnel.data.user.enum.UserRole
 import de.vyacheslav.kushchenko.sales.funnel.data.user.model.User
+import de.vyacheslav.kushchenko.sales.funnel.web.exception.base.BadRequestException
 import de.vyacheslav.kushchenko.sales.funnel.web.request.ProjectImportRequest
 import de.vyacheslav.kushchenko.sales.funnel.web.request.ProjectImportRowRequest
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
@@ -60,7 +62,7 @@ class ProjectImportServiceTest {
             actor,
             ProjectImportRequest(
                 dryRun = false,
-                rows = listOf(validRow(createdAt = createdAt, currentStage = ProjectStage.PRODUCTION, currentStatus = ProjectStatus.LOST)),
+                rows = listOf(validRow(createdAt = createdAt, currentStage = ProjectStage.PROPOSAL, currentStatus = ProjectStatus.LOST)),
             ),
         )
 
@@ -72,12 +74,30 @@ class ProjectImportServiceTest {
                 assertThat(entity.source).isEqualTo(ProjectSource.DIRECT_SALES)
                 assertThat(entity.initialAmount).isEqualByComparingTo("1200.00")
                 assertThat(entity.currentAmount).isEqualByComparingTo("1200.00")
-                assertThat(entity.currentStage).isEqualTo(ProjectStage.PRODUCTION)
+                assertThat(entity.currentStage).isEqualTo(ProjectStage.PROPOSAL)
                 assertThat(entity.currentStatus).isEqualTo(ProjectStatus.LOST)
                 assertThat(entity.createdAt).isEqualTo(createdAt.toInstant())
                 assertThat(entity.updatedAt).isEqualTo(createdAt.toInstant())
             })
         }
+    }
+
+    @Test
+    fun `done rows must use contracted stage`() {
+        val actor = admin()
+
+        assertThatThrownBy {
+            projectImportService.import(
+                actor,
+                ProjectImportRequest(
+                    dryRun = true,
+                    rows = listOf(validRow(currentStage = ProjectStage.INVOICE_ISSUED, currentStatus = ProjectStatus.DONE)),
+                ),
+            )
+        }
+            .isInstanceOfSatisfying(BadRequestException::class.java) {
+                assertThat(it.error.message).isEqualTo("Import row Проект with DONE status must be on CONTRACTED stage")
+            }
     }
 
     @Test

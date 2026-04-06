@@ -2,6 +2,8 @@ package de.vyacheslav.kushchenko.sales.funnel.service
 
 import de.vyacheslav.kushchenko.sales.funnel.data.project.dao.ProjectEntity.Companion.asEntity
 import de.vyacheslav.kushchenko.sales.funnel.data.project.dao.ProjectEntity.Companion.asModel
+import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectStage
+import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectStatus
 import de.vyacheslav.kushchenko.sales.funnel.data.project.model.Project
 import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectRepository
 import de.vyacheslav.kushchenko.sales.funnel.data.user.enum.UserRole
@@ -101,6 +103,22 @@ class ProjectImportService(
 
         row.currentAmount?.takeIf { it < java.math.BigDecimal.ZERO }?.let {
             throw BadRequestException("Import row $title has negative currentAmount")
+        }
+
+        when (row.currentStatus) {
+            ProjectStatus.DONE -> {
+                if (row.currentStage != ProjectStage.CONTRACTED) {
+                    throw BadRequestException("Import row $title with DONE status must be on CONTRACTED stage")
+                }
+            }
+
+            ProjectStatus.LOST, ProjectStatus.ON_HOLD -> {
+                if (row.currentStage != ProjectStage.PROPOSAL) {
+                    throw BadRequestException("Import row $title with ${row.currentStatus.name} status must be on PROPOSAL stage")
+                }
+            }
+
+            ProjectStatus.ACTIVE, ProjectStatus.INACTIVE -> Unit
         }
 
         return row.copy(title = title)

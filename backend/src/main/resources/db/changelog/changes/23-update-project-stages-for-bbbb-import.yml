@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 23-update-project-stages-for-bbbb-import
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              update projects
+              set current_stage = case current_stage
+                when 'NEGOTIATION' then 'PROPOSAL'
+                when 'PRODUCTION' then 'CONTRACTED'
+                else current_stage
+              end,
+              paused_from_stage = case paused_from_stage
+                when 'NEGOTIATION' then 'PROPOSAL'
+                when 'PRODUCTION' then 'CONTRACTED'
+                else paused_from_stage
+              end;
+
+              update project_history
+              set old_stage = case old_stage
+                when 'NEGOTIATION' then 'PROPOSAL'
+                when 'PRODUCTION' then 'CONTRACTED'
+                else old_stage
+              end,
+              new_stage = case new_stage
+                when 'NEGOTIATION' then 'PROPOSAL'
+                when 'PRODUCTION' then 'CONTRACTED'
+                else new_stage
+              end;

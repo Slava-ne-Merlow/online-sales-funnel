@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/21-update-project-enums.yml
   - include:
       file: db/changelog/changes/22-split-project-amounts.yml
+  - include:
+      file: db/changelog/changes/23-update-project-stages-for-bbbb-import.yml

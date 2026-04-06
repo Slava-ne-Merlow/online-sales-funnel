@@ -592,9 +592,8 @@ components:
       enum:
         - QUALIFICATION
         - PROPOSAL
-        - NEGOTIATION
+        - CONTRACTED
         - INVOICE_ISSUED
-        - PRODUCTION
         - WAITING_FOR_PAYMENT
 
     ProjectStatus:
