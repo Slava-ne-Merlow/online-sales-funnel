@@ -43,15 +43,19 @@ class ProjectAnalyticsService(
         period: AnalyticsPeriod,
         source: ProjectSource?,
         responsibleUser: UUID?,
+        updatedAtFrom: Instant?,
+        updatedAtTo: Instant?,
     ): ProjectAnalyticsDto {
         val now = Instant.now()
+        val effectiveUpdatedAtFrom = updatedAtFrom ?: resolveUpdatedAtFrom(period, now)
+        val effectiveUpdatedAtTo = updatedAtTo ?: now
         val visibleFilter = projectAccessService.applyVisibility(
             actor,
             ProjectFilter(
                 source = source,
                 responsibleUser = responsibleUser,
-                createdAtFrom = resolveCreatedAtFrom(period, now),
-                createdAtTo = now,
+                updatedAtFrom = effectiveUpdatedAtFrom,
+                updatedAtTo = effectiveUpdatedAtTo,
             )
         )
 
@@ -110,7 +114,7 @@ class ProjectAnalyticsService(
                     )
                 }
             },
-            periodTrend = buildTrend(projects, period, now),
+            periodTrend = buildTrend(projects, period, effectiveUpdatedAtFrom, effectiveUpdatedAtTo, now),
             funnelSummary = ProjectStage.entries.map { stage ->
                 ProjectFunnelSummaryItemDto(
                     stage = ProjectStageDto.valueOf(stage.name),
@@ -119,7 +123,7 @@ class ProjectAnalyticsService(
                 )
             },
             topProjects = projects
-                .sortedWith(compareByDescending<Project> { it.currentAmount ?: BigDecimal.ZERO }.thenByDescending { it.createdAt })
+                .sortedWith(compareByDescending<Project> { it.currentAmount ?: BigDecimal.ZERO }.thenByDescending { it.updatedAt })
                 .take(5)
                 .map { project ->
                     TopProjectDto(
@@ -134,13 +138,19 @@ class ProjectAnalyticsService(
         )
     }
 
-    private fun buildTrend(projects: List<Project>, period: AnalyticsPeriod, now: Instant): List<ProjectTrendPointDto> {
+    private fun buildTrend(
+        projects: List<Project>,
+        period: AnalyticsPeriod,
+        updatedAtFrom: Instant?,
+        updatedAtTo: Instant?,
+        now: Instant,
+    ): List<ProjectTrendPointDto> {
         val zone = ZoneOffset.UTC
         return when (period) {
             AnalyticsPeriod.LAST_WEEK, AnalyticsPeriod.LAST_MONTH -> {
-                val startDate = resolveCreatedAtFrom(period, now)?.atZone(zone)?.toLocalDate() ?: now.atZone(zone).toLocalDate()
-                val endDate = now.atZone(zone).toLocalDate()
-                val grouped = projects.groupBy { it.createdAt.atZone(zone).toLocalDate() }
+                val startDate = (updatedAtFrom ?: resolveUpdatedAtFrom(period, now) ?: now).atZone(zone).toLocalDate()
+                val endDate = (updatedAtTo ?: now).atZone(zone).toLocalDate()
+                val grouped = projects.groupBy { it.updatedAt.atZone(zone).toLocalDate() }
 
                 generateSequence(startDate) { current ->
                     current.plusDays(1).takeIf { !it.isAfter(endDate) }
@@ -155,13 +165,17 @@ class ProjectAnalyticsService(
             }
 
             AnalyticsPeriod.LAST_YEAR, AnalyticsPeriod.ALL_TIME -> {
-                val endMonth = YearMonth.from(now.atZone(zone))
+                val endMonth = YearMonth.from((updatedAtTo ?: now).atZone(zone))
                 val startMonth = when (period) {
-                    AnalyticsPeriod.LAST_YEAR -> YearMonth.from(now.atZone(zone).minusYears(1))
-                    AnalyticsPeriod.ALL_TIME -> projects.minOfOrNull { YearMonth.from(it.createdAt.atZone(zone)) } ?: endMonth
+                    AnalyticsPeriod.LAST_YEAR -> YearMonth.from((updatedAtFrom ?: resolveUpdatedAtFrom(period, now) ?: now).atZone(zone))
+                    AnalyticsPeriod.ALL_TIME -> {
+                        updatedAtFrom?.let { YearMonth.from(it.atZone(zone)) }
+                            ?: projects.minOfOrNull { YearMonth.from(it.updatedAt.atZone(zone)) }
+                            ?: endMonth
+                    }
                     else -> endMonth
                 }
-                val grouped = projects.groupBy { YearMonth.from(it.createdAt.atZone(zone)) }
+                val grouped = projects.groupBy { YearMonth.from(it.updatedAt.atZone(zone)) }
 
                 generateSequence(startMonth) { current ->
                     current.plusMonths(1).takeIf { !it.isAfter(endMonth) }
@@ -177,7 +191,7 @@ class ProjectAnalyticsService(
         }
     }
 
-    private fun resolveCreatedAtFrom(period: AnalyticsPeriod, now: Instant): Instant? = when (period) {
+    private fun resolveUpdatedAtFrom(period: AnalyticsPeriod, now: Instant): Instant? = when (period) {
         AnalyticsPeriod.LAST_WEEK -> now.minus(7, ChronoUnit.DAYS)
         AnalyticsPeriod.LAST_MONTH -> now.minus(30, ChronoUnit.DAYS)
         AnalyticsPeriod.LAST_YEAR -> now.minus(365, ChronoUnit.DAYS)

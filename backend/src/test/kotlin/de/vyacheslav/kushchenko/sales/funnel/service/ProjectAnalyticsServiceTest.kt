@@ -67,6 +67,8 @@ class ProjectAnalyticsServiceTest {
             period = AnalyticsPeriod.ALL_TIME,
             source = null,
             responsibleUser = null,
+            updatedAtFrom = null,
+            updatedAtTo = null,
         )
 
         assertThat(result.totalProjects).isEqualTo(2)

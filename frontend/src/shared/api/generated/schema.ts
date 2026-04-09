@@ -654,8 +654,8 @@ export interface operations {
                 source?: components["schemas"]["ProjectSource"];
                 createdBy?: string;
                 responsibleUser?: string;
-                createdAtFrom?: string;
-                createdAtTo?: string;
+                updatedAtFrom?: string;
+                updatedAtTo?: string;
                 sortBy?: components["schemas"]["ProjectSortField"];
                 sortDirection?: components["schemas"]["ProjectSortDirection"];
             };
@@ -715,6 +715,8 @@ export interface operations {
                 period: components["schemas"]["AnalyticsPeriod"];
                 source?: components["schemas"]["ProjectSource"];
                 responsibleUser?: string;
+                updatedAtFrom?: string;
+                updatedAtTo?: string;
             };
             header?: never;
             path?: never;

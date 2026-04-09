@@ -12,6 +12,6 @@ data class ProjectFilter(
     val source: ProjectSource? = null,
     val createdBy: UUID? = null,
     val responsibleUser: UUID? = null,
-    val createdAtFrom: Instant? = null,
-    val createdAtTo: Instant? = null,
+    val updatedAtFrom: Instant? = null,
+    val updatedAtTo: Instant? = null,
 )

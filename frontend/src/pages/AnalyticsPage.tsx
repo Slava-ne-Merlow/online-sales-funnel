@@ -1,4 +1,4 @@
-import { useMemo, useState, type PropsWithChildren } from 'react'
+import { useEffect, useMemo, useState, type PropsWithChildren } from 'react'
 import {
   Area,
   AreaChart,
@@ -18,7 +18,7 @@ import { useProjectAnalyticsQuery } from '../entities/project/queries'
 import { useUsersQuery } from '../entities/user/queries'
 import { useAuth } from '../features/auth/auth-context'
 import type { AnalyticsPeriod, ProjectSource } from '../shared/api/types'
-import { formatCurrency, formatNumber } from '../shared/lib/format'
+import { formatCurrency, formatNumber, toDateTimeEnd, toDateTimeStart } from '../shared/lib/format'
 import { buildUserOptions } from '../shared/lib/project-analytics'
 import {
   getProjectSourceLabel,
@@ -27,6 +27,7 @@ import {
   projectSourceOptions,
 } from '../shared/lib/project-meta'
 import { ComboboxField } from '../shared/ui/ComboboxField'
+import { DateField } from '../shared/ui/DateField'
 import { EmptyState, ErrorState, LoadingState } from '../shared/ui/States'
 import { SegmentedControl } from '../shared/ui/SegmentedControl'
 import { SelectField } from '../shared/ui/SelectField'
@@ -41,6 +42,37 @@ const periodOptions: Array<{ value: AnalyticsPeriod; label: string }> = [
 
 const chartPalette = ['#244a8f', '#3d6db4', '#6f8fc6', '#8ba6d1', '#c2d0e6', '#445d7a', '#8f9fb4']
 const statusPalette = ['#2f6a44', '#b27a28', '#8f3f3f', '#2d5f8f', '#6a6f7a']
+
+function formatDateInput(value: Date) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function resolvePresetRange(period: AnalyticsPeriod) {
+  const end = new Date()
+  const start = new Date(end)
+
+  switch (period) {
+    case 'LAST_WEEK':
+      start.setDate(start.getDate() - 7)
+      break
+    case 'LAST_MONTH':
+      start.setDate(start.getDate() - 30)
+      break
+    case 'LAST_YEAR':
+      start.setDate(start.getDate() - 365)
+      break
+    case 'ALL_TIME':
+      return { from: '', to: '' }
+  }
+
+  return {
+    from: formatDateInput(start),
+    to: formatDateInput(end),
+  }
+}
 
 function ChartCard({
   title,
@@ -66,6 +98,8 @@ export function AnalyticsPage() {
   const [period, setPeriod] = useState<AnalyticsPeriod>('LAST_MONTH')
   const [source, setSource] = useState<ProjectSource | ''>('')
   const [responsibleUser, setResponsibleUser] = useState('')
+  const [updatedAtFrom, setUpdatedAtFrom] = useState('')
+  const [updatedAtTo, setUpdatedAtTo] = useState('')
   const usersQuery = useUsersQuery(isAdmin)
   const responsibleUserOptions = useMemo(
     () =>
@@ -76,10 +110,18 @@ export function AnalyticsPage() {
     [user, usersQuery.data],
   )
 
+  useEffect(() => {
+    const range = resolvePresetRange(period)
+    setUpdatedAtFrom(range.from)
+    setUpdatedAtTo(range.to)
+  }, [period])
+
   const analyticsQuery = useProjectAnalyticsQuery({
     period,
     source: source || undefined,
     responsibleUser: isAdmin ? responsibleUser || undefined : undefined,
+    updatedAtFrom: toDateTimeStart(updatedAtFrom),
+    updatedAtTo: toDateTimeEnd(updatedAtTo),
   })
 
   const analytics = analyticsQuery.data
@@ -142,13 +184,21 @@ export function AnalyticsPage() {
         <div className="panel__header analytics-filters__header">
           <div>
             <h2 className="section-title">Аналитика</h2>
-            <p className="section-hint">Фильтры сведены к коротким пресетам периода и необязательным срезам.</p>
+            <p className="section-hint">Период и диапазон дат считаются по последнему изменению проекта.</p>
           </div>
         </div>
 
         <div className="analytics-filters__body">
           <SegmentedControl value={period} onChange={setPeriod} options={periodOptions} />
           <div className="analytics-filters__controls">
+            <label className="field">
+              <span>Изменён с</span>
+              <DateField value={updatedAtFrom} onChange={setUpdatedAtFrom} placeholder="Любая дата" />
+            </label>
+            <label className="field">
+              <span>Изменён по</span>
+              <DateField value={updatedAtTo} onChange={setUpdatedAtTo} placeholder="Любая дата" />
+            </label>
             <label className="field">
               <span>Источник</span>
               <SelectField

@@ -48,8 +48,8 @@ class ProjectController(
         source: ProjectSource?,
         createdBy: UUID?,
         responsibleUser: UUID?,
-        createdAtFrom: OffsetDateTime?,
-        createdAtTo: OffsetDateTime?,
+        updatedAtFrom: OffsetDateTime?,
+        updatedAtTo: OffsetDateTime?,
         sortBy: ProjectSortField?,
         sortDirection: ProjectSortDirection?,
     ): ResponseEntity<List<ProjectDto>> =
@@ -61,8 +61,8 @@ class ProjectController(
                 source = source?.let { de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectSource.valueOf(it.name) },
                 createdBy = createdBy,
                 responsibleUser = responsibleUser,
-                createdAtFrom = createdAtFrom?.toInstant(),
-                createdAtTo = createdAtTo?.toInstant(),
+                updatedAtFrom = updatedAtFrom?.toInstant(),
+                updatedAtTo = updatedAtTo?.toInstant(),
             ),
             sort = buildSort(sortBy, sortDirection),
         ).let(projectViewService::toDto).ok()
@@ -72,11 +72,15 @@ class ProjectController(
         period: AnalyticsPeriod,
         source: ProjectSource?,
         responsibleUser: UUID?,
+        updatedAtFrom: OffsetDateTime?,
+        updatedAtTo: OffsetDateTime?,
     ): ResponseEntity<ProjectAnalyticsDto> = projectAnalyticsService.getAnalytics(
         actor = getRequestUser(),
         period = AnalyticsPeriodModel.valueOf(period.name),
         source = source?.let { de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectSource.valueOf(it.name) },
         responsibleUser = responsibleUser,
+        updatedAtFrom = updatedAtFrom?.toInstant(),
+        updatedAtTo = updatedAtTo?.toInstant(),
     ).ok()
 
     @Authorized

@@ -55,11 +55,11 @@ export function shortId(value?: string | null) {
 }
 
 export function toDateTimeStart(value: string) {
-  return value ? `${value}T00:00:00` : undefined
+  return value ? `${value}T00:00:00.000Z` : undefined
 }
 
 export function toDateTimeEnd(value: string) {
-  return value ? `${value}T23:59:59` : undefined
+  return value ? `${value}T23:59:59.000Z` : undefined
 }
 
 export function parseDateOnly(value?: string | null) {

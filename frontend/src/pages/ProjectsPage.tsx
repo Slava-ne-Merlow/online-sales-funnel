@@ -28,8 +28,8 @@ type FiltersState = {
   currentStatus: Project['currentStatus'] | ''
   source: Project['source'] | ''
   responsibleUser: string
-  createdAtFrom: string
-  createdAtTo: string
+  updatedAtFrom: string
+  updatedAtTo: string
   sortBy: ProjectSortField
   sortDirection: ProjectSortDirection
 }
@@ -39,8 +39,8 @@ const initialFilters: FiltersState = {
   currentStatus: '',
   source: '',
   responsibleUser: '',
-  createdAtFrom: '',
-  createdAtTo: '',
+  updatedAtFrom: '',
+  updatedAtTo: '',
   sortBy: 'UPDATED_AT',
   sortDirection: 'DESC',
 }
@@ -76,8 +76,8 @@ export function ProjectsPage() {
       currentStatus: filters.currentStatus || undefined,
       source: filters.source || undefined,
       responsibleUser: isAdmin ? filters.responsibleUser || undefined : undefined,
-      createdAtFrom: toDateTimeStart(filters.createdAtFrom),
-      createdAtTo: toDateTimeEnd(filters.createdAtTo),
+      updatedAtFrom: toDateTimeStart(filters.updatedAtFrom),
+      updatedAtTo: toDateTimeEnd(filters.updatedAtTo),
       sortBy: filters.sortBy,
       sortDirection: filters.sortDirection,
     }),
@@ -218,19 +218,19 @@ export function ProjectsPage() {
         ) : null}
 
         <label className="field">
-          <span>Создан с</span>
+          <span>Изменён с</span>
           <DateField
-            value={filters.createdAtFrom}
-            onChange={(value) => setFilters((current) => ({ ...current, createdAtFrom: value }))}
+            value={filters.updatedAtFrom}
+            onChange={(value) => setFilters((current) => ({ ...current, updatedAtFrom: value }))}
             placeholder="Любая дата"
           />
         </label>
 
         <label className="field">
-          <span>Создан по</span>
+          <span>Изменён по</span>
           <DateField
-            value={filters.createdAtTo}
-            onChange={(value) => setFilters((current) => ({ ...current, createdAtTo: value }))}
+            value={filters.updatedAtTo}
+            onChange={(value) => setFilters((current) => ({ ...current, updatedAtTo: value }))}
             placeholder="Любая дата"
           />
         </label>

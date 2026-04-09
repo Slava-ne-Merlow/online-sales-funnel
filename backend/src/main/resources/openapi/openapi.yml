@@ -237,13 +237,13 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: createdAtFrom
+        - name: updatedAtFrom
           in: query
           required: false
           schema:
             type: string
             format: date-time
-        - name: createdAtTo
+        - name: updatedAtTo
           in: query
           required: false
           schema:
@@ -292,6 +292,18 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: updatedAtFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: updatedAtTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
       responses:
         '200':
           description: Aggregated project analytics for dashboards and charts

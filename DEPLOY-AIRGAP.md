@@ -41,8 +41,10 @@ Set at least:
 - `POSTGRES_USERNAME`
 - `POSTGRES_PASSWORD`
 - `POSTGRES_JDBC_URL`
+- `APP_FRONTEND_URL`
 - `MAIL_USERNAME`
 - `MAIL_PASSWORD`
+- `MAIL_BCC_ADMIN`
 - `JWT_SECRET`
 
 4. Load docker images from the bundle:
@@ -62,6 +64,7 @@ After startup:
 - frontend will be available on `http://<vm-host>:<FRONTEND_PORT>`
 - backend API will be available on `http://<vm-host>:<BACKEND_PORT>`
 - frontend will still proxy `/api` to backend internally
+- emails will use `APP_FRONTEND_URL` as the login link
 
 ## Why this works without internet
 

@@ -203,25 +203,25 @@ export function DashboardPage() {
       {user?.role === 'ADMIN' ? (
         <FilterBar title="Фильтры dashboard">
           <label className="field">
-            <span>Дата с</span>
+            <span>Изменён с</span>
             <DateField
-              value={filters.createdAtFrom?.slice(0, 10) ?? ''}
+              value={filters.updatedAtFrom?.slice(0, 10) ?? ''}
               onChange={(value) =>
                 setFilters((current) => ({
                   ...current,
-                  createdAtFrom: value ? `${value}T00:00:00.000Z` : undefined,
+                  updatedAtFrom: value ? `${value}T00:00:00.000Z` : undefined,
                 }))
               }
             />
           </label>
           <label className="field">
-            <span>Дата по</span>
+            <span>Изменён по</span>
             <DateField
-              value={filters.createdAtTo?.slice(0, 10) ?? ''}
+              value={filters.updatedAtTo?.slice(0, 10) ?? ''}
               onChange={(value) =>
                 setFilters((current) => ({
                   ...current,
-                  createdAtTo: value ? `${value}T23:59:59.000Z` : undefined,
+                  updatedAtTo: value ? `${value}T23:59:59.000Z` : undefined,
                 }))
               }
             />

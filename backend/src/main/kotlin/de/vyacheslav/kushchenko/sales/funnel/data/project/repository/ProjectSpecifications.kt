@@ -12,8 +12,8 @@ object ProjectSpecifications {
             filter.source?.let { cb.equal(root.get<Any>("source"), it) },
             filter.createdBy?.let { cb.equal(root.get<Any>("createdById"), it) },
             filter.responsibleUser?.let { cb.equal(root.get<Any>("responsibleUserId"), it) },
-            filter.createdAtFrom?.let { cb.greaterThanOrEqualTo(root.get("createdAt"), it) },
-            filter.createdAtTo?.let { cb.lessThanOrEqualTo(root.get("createdAt"), it) },
+            filter.updatedAtFrom?.let { cb.greaterThanOrEqualTo(root.get("updatedAt"), it) },
+            filter.updatedAtTo?.let { cb.lessThanOrEqualTo(root.get("updatedAt"), it) },
         ).filterNotNull()
 
         cb.and(*predicates.toTypedArray())

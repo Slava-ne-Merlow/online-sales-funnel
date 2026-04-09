@@ -1,8 +1,8 @@
 import type { Project, ProjectHistory, ProjectSource, ProjectStage, ProjectStatus, User } from '../api/types'
 
 export type DashboardFilters = {
-  createdAtFrom?: string
-  createdAtTo?: string
+  updatedAtFrom?: string
+  updatedAtTo?: string
   source?: ProjectSource | ''
   stage?: ProjectStage | ''
   status?: ProjectStatus | ''
@@ -78,13 +78,13 @@ export function resolveUserLabel(
 
 export function filterProjectsForDashboard(projects: Project[], filters: DashboardFilters) {
   return projects.filter((project) => {
-    const createdAt = new Date(project.createdAt).getTime()
+    const updatedAt = new Date(project.updatedAt).getTime()
 
-    if (filters.createdAtFrom && createdAt < new Date(filters.createdAtFrom).getTime()) {
+    if (filters.updatedAtFrom && updatedAt < new Date(filters.updatedAtFrom).getTime()) {
       return false
     }
 
-    if (filters.createdAtTo && createdAt > new Date(filters.createdAtTo).getTime()) {
+    if (filters.updatedAtTo && updatedAt > new Date(filters.updatedAtTo).getTime()) {
       return false
     }
 
