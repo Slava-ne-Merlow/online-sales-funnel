@@ -60,6 +60,7 @@ class ProjectImportService(
     private fun persistRow(actor: User, row: ProjectImportRowRequest): ProjectImportRowResponse {
         val responsibleUserId = resolveResponsibleUserId(actor, row.responsibleUserId)
         val createdAt = row.createdAt.toInstant()
+        val updatedAt = (row.updatedAt ?: row.createdAt).toInstant()
         val project = Project(
             title = row.title.trim(),
             source = row.source,
@@ -72,7 +73,7 @@ class ProjectImportService(
             createdById = actor.id!!,
             responsibleUserId = responsibleUserId,
             createdAt = createdAt,
-            updatedAt = createdAt,
+            updatedAt = updatedAt,
         )
 
         val savedProject = projectRepository.save(project.asEntity()).asModel()
@@ -103,6 +104,10 @@ class ProjectImportService(
 
         row.currentAmount?.takeIf { it < java.math.BigDecimal.ZERO }?.let {
             throw BadRequestException("Import row $title has negative currentAmount")
+        }
+
+        row.updatedAt?.takeIf { it.isBefore(row.createdAt) }?.let {
+            throw BadRequestException("Import row $title has updatedAt earlier than createdAt")
         }
 
         when (row.currentStatus) {

@@ -23,5 +23,6 @@ data class ProjectImportRowRequest(
     val currentStage: ProjectStage,
     val currentStatus: ProjectStatus,
     val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime? = null,
     val responsibleUserId: UUID? = null,
 )

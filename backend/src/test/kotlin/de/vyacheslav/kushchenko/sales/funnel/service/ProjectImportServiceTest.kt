@@ -57,12 +57,20 @@ class ProjectImportServiceTest {
     fun `apply persists project with imported state`() {
         val actor = admin()
         val createdAt = OffsetDateTime.of(2026, 3, 27, 0, 0, 0, 0, ZoneOffset.UTC)
+        val updatedAt = OffsetDateTime.of(2026, 4, 9, 0, 0, 0, 0, ZoneOffset.UTC)
 
         val response = projectImportService.import(
             actor,
             ProjectImportRequest(
                 dryRun = false,
-                rows = listOf(validRow(createdAt = createdAt, currentStage = ProjectStage.PROPOSAL, currentStatus = ProjectStatus.LOST)),
+                rows = listOf(
+                    validRow(
+                        createdAt = createdAt,
+                        updatedAt = updatedAt,
+                        currentStage = ProjectStage.PROPOSAL,
+                        currentStatus = ProjectStatus.LOST,
+                    ),
+                ),
             ),
         )
 
@@ -77,9 +85,32 @@ class ProjectImportServiceTest {
                 assertThat(entity.currentStage).isEqualTo(ProjectStage.PROPOSAL)
                 assertThat(entity.currentStatus).isEqualTo(ProjectStatus.LOST)
                 assertThat(entity.createdAt).isEqualTo(createdAt.toInstant())
-                assertThat(entity.updatedAt).isEqualTo(createdAt.toInstant())
+                assertThat(entity.updatedAt).isEqualTo(updatedAt.toInstant())
             })
         }
+    }
+
+    @Test
+    fun `updated at cannot be earlier than created at`() {
+        val actor = admin()
+
+        assertThatThrownBy {
+            projectImportService.import(
+                actor,
+                ProjectImportRequest(
+                    dryRun = true,
+                    rows = listOf(
+                        validRow(
+                            createdAt = OffsetDateTime.of(2026, 3, 27, 0, 0, 0, 0, ZoneOffset.UTC),
+                            updatedAt = OffsetDateTime.of(2026, 3, 20, 0, 0, 0, 0, ZoneOffset.UTC),
+                        ),
+                    ),
+                ),
+            )
+        }
+            .isInstanceOfSatisfying(BadRequestException::class.java) {
+                assertThat(it.error.message).isEqualTo("Import row Проект has updatedAt earlier than createdAt")
+            }
     }
 
     @Test
@@ -128,6 +159,7 @@ class ProjectImportServiceTest {
 
     private fun validRow(
         createdAt: OffsetDateTime = OffsetDateTime.of(2026, 3, 20, 0, 0, 0, 0, ZoneOffset.UTC),
+        updatedAt: OffsetDateTime? = null,
         currentStage: ProjectStage = ProjectStage.PROPOSAL,
         currentStatus: ProjectStatus = ProjectStatus.ACTIVE,
     ) = ProjectImportRowRequest(
@@ -141,6 +173,7 @@ class ProjectImportServiceTest {
         currentStage = currentStage,
         currentStatus = currentStatus,
         createdAt = createdAt,
+        updatedAt = updatedAt,
         responsibleUserId = null,
     )
 
