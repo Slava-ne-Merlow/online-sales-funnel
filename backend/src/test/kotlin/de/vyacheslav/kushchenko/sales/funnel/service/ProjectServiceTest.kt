@@ -14,6 +14,7 @@ import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectRepo
 import de.vyacheslav.kushchenko.sales.funnel.data.user.enum.UserRole
 import de.vyacheslav.kushchenko.sales.funnel.data.user.model.User
 import de.vyacheslav.kushchenko.sales.funnel.web.exception.base.BadRequestException
+import de.vyacheslav.kushchenko.sales.funnel.web.exception.base.ForbiddenException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -153,6 +154,64 @@ class ProjectServiceTest {
         }
     }
 
+    @Test
+    fun `user cannot update project assigned to another responsible user`() {
+        val actor = testUser(UserRole.USER)
+        val responsibleUserId = UUID.randomUUID()
+        val project = testProject(createdById = UUID.randomUUID(), responsibleUserId = responsibleUserId)
+        every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
+
+        assertThatThrownBy {
+            projectService.update(
+                project.id!!,
+                actor,
+                UpdateProjectRequest(currentAmount = BigDecimal("1500")),
+            )
+        }
+            .isInstanceOfSatisfying(ForbiddenException::class.java) {
+                assertThat(it.error.message).isEqualTo("Only project responsible user can change project")
+            }
+    }
+
+    @Test
+    fun `responsible user can update assigned project`() {
+        val actor = testUser(UserRole.USER)
+        val project = testProject(createdById = UUID.randomUUID(), responsibleUserId = actor.id)
+        every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
+
+        val result = projectService.update(
+            project.id!!,
+            actor,
+            UpdateProjectRequest(currentAmount = BigDecimal("1500")),
+        )
+
+        assertThat(result.currentAmount).isEqualByComparingTo("1500.00")
+    }
+
+    @Test
+    fun `admin can delete project`() {
+        val actor = testUser(UserRole.ADMIN)
+        val project = testProject(createdById = actor.id!!)
+        every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
+        every { projectRepository.deleteById(project.id!!) } returns Unit
+
+        projectService.delete(project.id!!, actor)
+
+        verify(exactly = 1) { projectRepository.deleteById(project.id!!) }
+    }
+
+    @Test
+    fun `user cannot delete project`() {
+        val actor = testUser(UserRole.USER)
+
+        assertThatThrownBy {
+            projectService.delete(UUID.randomUUID(), actor)
+        }
+            .isInstanceOfSatisfying(ForbiddenException::class.java) {
+                assertThat(it.error.message).isEqualTo("Only admin can delete projects")
+            }
+    }
+
     private fun testUser(role: UserRole) = User(
         id = UUID.randomUUID(),
         email = "${role.name.lowercase()}@example.com",
@@ -161,7 +220,7 @@ class ProjectServiceTest {
         password = null,
     )
 
-    private fun testProject(createdById: UUID) = Project(
+    private fun testProject(createdById: UUID, responsibleUserId: UUID? = null) = Project(
         id = UUID.randomUUID(),
         title = "Factory lead",
         source = ProjectSource.TENDER,
@@ -172,7 +231,7 @@ class ProjectServiceTest {
         currentStatus = ProjectStatus.ACTIVE,
         pausedFromStage = null,
         createdById = createdById,
-        responsibleUserId = null,
+        responsibleUserId = responsibleUserId,
         createdAt = Instant.now(),
         updatedAt = Instant.now(),
     )

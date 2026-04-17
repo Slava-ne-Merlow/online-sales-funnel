@@ -55,6 +55,11 @@ export const projectsApi = {
       body: payload,
     })
   },
+  deleteProject(projectId: string) {
+    return request<void>(`/api/projects/${projectId}`, {
+      method: 'DELETE',
+    })
+  },
   transitionProject(projectId: string, payload: ProjectTransitionRequest) {
     return request<Project>(`/api/projects/${projectId}/transition`, {
       method: 'POST',

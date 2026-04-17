@@ -3,7 +3,7 @@ import { getStoredToken, removeStoredToken } from '../lib/auth-storage'
 import type { StatusResponse } from './types'
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH'
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   query?: Record<string, string | number | boolean | undefined | null>
   body?: unknown
   auth?: boolean

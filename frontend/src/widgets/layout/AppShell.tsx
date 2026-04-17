@@ -32,16 +32,12 @@ export function AppShell({ children }: PropsWithChildren) {
           <NavLink to="/projects" className="sidebar__link">
             Проекты
           </NavLink>
-          {user?.role === 'ADMIN' ? (
-            <>
-              <NavLink to="/analytics" className="sidebar__link">
-                Аналитика
-              </NavLink>
-              <NavLink to="/activity" className="sidebar__link">
-                История действий
-              </NavLink>
-            </>
-          ) : null}
+          <NavLink to="/analytics" className="sidebar__link">
+            Аналитика
+          </NavLink>
+          <NavLink to="/activity" className="sidebar__link">
+            История действий
+          </NavLink>
         </nav>
       </aside>
 

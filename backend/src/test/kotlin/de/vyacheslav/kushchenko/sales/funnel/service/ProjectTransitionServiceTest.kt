@@ -15,6 +15,7 @@ import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectRepo
 import de.vyacheslav.kushchenko.sales.funnel.data.user.enum.UserRole
 import de.vyacheslav.kushchenko.sales.funnel.data.user.model.User
 import de.vyacheslav.kushchenko.sales.funnel.web.exception.base.BadRequestException
+import de.vyacheslav.kushchenko.sales.funnel.web.exception.base.ForbiddenException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -234,6 +235,47 @@ class ProjectTransitionServiceTest {
     }
 
     @Test
+    fun `user cannot transition project assigned to another responsible user`() {
+        val actor = testUser()
+        val project = testProject(
+            currentStage = ProjectStage.PROPOSAL,
+            createdById = UUID.randomUUID(),
+            responsibleUserId = UUID.randomUUID(),
+        )
+        every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
+
+        assertThatThrownBy {
+            projectTransitionService.transition(
+                project.id!!,
+                actor,
+                ProjectTransitionRequest(newStage = ProjectStageRequest.INVOICE_ISSUED),
+            )
+        }
+            .isInstanceOfSatisfying(ForbiddenException::class.java) {
+                assertThat(it.error.message).isEqualTo("Only project responsible user can change project")
+            }
+    }
+
+    @Test
+    fun `responsible user can transition assigned project`() {
+        val actor = testUser()
+        val project = testProject(
+            currentStage = ProjectStage.PROPOSAL,
+            createdById = UUID.randomUUID(),
+            responsibleUserId = actor.id,
+        )
+        every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
+
+        val result = projectTransitionService.transition(
+            project.id!!,
+            actor,
+            ProjectTransitionRequest(newStage = ProjectStageRequest.INVOICE_ISSUED),
+        )
+
+        assertThat(result.currentStage).isEqualTo(ProjectStage.INVOICE_ISSUED)
+    }
+
+    @Test
     fun `advance moves invoice project to contracted without changing status`() {
         val actor = testActor()
         val project = testProject(currentStage = ProjectStage.INVOICE_ISSUED, createdById = actor.id!!)
@@ -290,11 +332,20 @@ class ProjectTransitionServiceTest {
         password = null,
     )
 
+    private fun testUser() = User(
+        id = UUID.randomUUID(),
+        email = "user@example.com",
+        name = "User",
+        role = UserRole.USER,
+        password = null,
+    )
+
     private fun testProject(
         currentStage: ProjectStage,
         createdById: UUID,
         currentStatus: ProjectStatus = ProjectStatus.ACTIVE,
         pausedFromStage: ProjectStage? = null,
+        responsibleUserId: UUID? = null,
     ) = Project(
         id = UUID.randomUUID(),
         title = "Factory project",
@@ -306,7 +357,7 @@ class ProjectTransitionServiceTest {
         currentStatus = currentStatus,
         pausedFromStage = pausedFromStage,
         createdById = createdById,
-        responsibleUserId = null,
+        responsibleUserId = responsibleUserId,
         createdAt = Instant.now(),
         updatedAt = Instant.now(),
     )

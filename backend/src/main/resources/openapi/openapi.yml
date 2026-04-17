@@ -167,7 +167,7 @@ paths:
       tags:
         - Users
       summary: Get users with role USER
-      description: Available only for ADMIN. Returns users with role USER for responsible user selection.
+      description: Returns users with role USER for responsible user selection.
       operationId: getUsers
       responses:
         '200':
@@ -365,6 +365,34 @@ paths:
                 $ref: '#/components/schemas/ProjectDto'
         '400':
           description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+    delete:
+      tags:
+        - Projects
+      summary: Delete project
+      description: Available only for ADMIN. Project history is removed with the project.
+      operationId: deleteProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Project deleted
+        '403':
+          description: Only admin can delete projects
           content:
             application/json:
               schema:

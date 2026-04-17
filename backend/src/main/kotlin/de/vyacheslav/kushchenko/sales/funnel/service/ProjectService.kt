@@ -17,6 +17,7 @@ import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectSpec
 import de.vyacheslav.kushchenko.sales.funnel.data.user.enum.UserRole
 import de.vyacheslav.kushchenko.sales.funnel.data.user.model.User
 import de.vyacheslav.kushchenko.sales.funnel.web.exception.base.BadRequestException
+import de.vyacheslav.kushchenko.sales.funnel.web.exception.base.ForbiddenException
 import de.vyacheslav.kushchenko.sales.funnel.web.exception.base.NotFoundException
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
@@ -80,7 +81,7 @@ class ProjectService(
 
     @Transactional
     fun update(projectId: UUID, actor: User, updateProjectRequest: UpdateProjectRequest): Project {
-        val project = getById(projectId, actor)
+        val project = projectAccessService.requireModificationAccess(actor, getById(projectId, actor))
         val now = Instant.now()
 
         val initialAmountUpdated = updateProjectRequest.initialAmount != null
@@ -143,6 +144,16 @@ class ProjectService(
         }
 
         return savedProject
+    }
+
+    @Transactional
+    fun delete(projectId: UUID, actor: User) {
+        if (actor.role != UserRole.ADMIN) {
+            throw ForbiddenException("Only admin can delete projects")
+        }
+
+        getProject(projectId)
+        projectRepository.deleteById(projectId)
     }
 
     private fun getProject(projectId: UUID): Project =

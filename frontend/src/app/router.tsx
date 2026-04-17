@@ -56,16 +56,6 @@ function ProtectedLayout() {
   )
 }
 
-function AdminRoute() {
-  const { user } = useAuth()
-
-  if (user?.role !== 'ADMIN') {
-    return <Navigate to="/" replace />
-  }
-
-  return <Outlet />
-}
-
 function LoginRoute() {
   const { isAuthenticated, isAuthReady } = useAuth()
 
@@ -106,17 +96,12 @@ export const router = createBrowserRouter([
         element: withSuspense(<ProjectDetailsPage />),
       },
       {
-        element: <AdminRoute />,
-        children: [
-          {
-            path: 'analytics',
-            element: withSuspense(<AnalyticsPage />),
-          },
-          {
-            path: 'activity',
-            element: withSuspense(<AdminActivityPage />),
-          },
-        ],
+        path: 'analytics',
+        element: withSuspense(<AnalyticsPage />),
+      },
+      {
+        path: 'activity',
+        element: withSuspense(<AdminActivityPage />),
       },
     ],
   },

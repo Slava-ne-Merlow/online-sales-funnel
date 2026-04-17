@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { useProjectHistoryQuery, useProjectQuery } from '../entities/project/queries'
+import { useAuth } from '../features/auth/auth-context'
 import { ProjectTransitionForm } from '../features/projects/ProjectTransitionForm'
 import { queryClient } from '../shared/api/query-client'
 import { projectsApi } from '../shared/api/services'
@@ -50,6 +51,7 @@ function getStatusTone(status: string) {
 export function ProjectDetailsPage() {
   const navigate = useNavigate()
   const { projectId } = useParams<{ projectId: string }>()
+  const { user } = useAuth()
   const [editError, setEditError] = useState<string | null>(null)
   const [stageError, setStageError] = useState<string | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
@@ -123,6 +125,17 @@ export function ProjectDetailsPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => projectsApi.deleteProject(projectId!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      navigate('/projects')
+    },
+    onError: (submissionError) => {
+      setEditError(submissionError instanceof Error ? submissionError.message : 'Не удалось удалить проект.')
+    },
+  })
+
   const timelineItems = useMemo(() => buildTimelineItems(historyQuery.data ?? [], []), [historyQuery.data])
 
   if (projectQuery.isPending || historyQuery.isPending) {
@@ -138,6 +151,8 @@ export function ProjectDetailsPage() {
   }
 
   const project = projectQuery.data
+  const canModifyProject = user?.role === 'ADMIN' || project.responsibleUserId === user?.id
+  const isAdmin = user?.role === 'ADMIN'
   const previousStage = project.allowedStageTransitions.find((stage) =>
     isBackwardStageChange(project.currentStage, stage),
   ) as ProjectStage | undefined
@@ -161,9 +176,25 @@ export function ProjectDetailsPage() {
               Обновлён {formatDateTime(project.updatedAt)}
             </p>
           </div>
-          <Button variant="secondary" onClick={() => navigate('/projects')}>
-            К списку
-          </Button>
+          <div className="inline-actions">
+            {isAdmin ? (
+              <Button
+                variant="danger"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (!window.confirm(`Удалить проект «${project.title}»? История проекта тоже будет удалена.`)) {
+                    return
+                  }
+                  deleteMutation.mutate()
+                }}
+              >
+                {deleteMutation.isPending ? 'Удаляем...' : 'Удалить проект'}
+              </Button>
+            ) : null}
+            <Button variant="secondary" onClick={() => navigate('/projects')}>
+              К списку
+            </Button>
+          </div>
         </div>
 
         <div className="details-grid details-grid--wide">
@@ -217,43 +248,51 @@ export function ProjectDetailsPage() {
 
           {editError ? <div className="alert alert--error">{editError}</div> : null}
 
-          <form
-            className="form form--compact"
-            onSubmit={handleSubmit(async (values) => {
-              try {
-                const nextGlobalComment = values.globalComment?.trim() ?? ''
-                setEditError(null)
-                await editMutation.mutateAsync({
-                  initialAmount: parseOptionalAmount(values.initialAmount),
-                  currentAmount: parseOptionalAmount(values.currentAmount),
-                  globalComment: nextGlobalComment !== (project.globalComment ?? '') ? nextGlobalComment : undefined,
-                })
-              } catch (submissionError) {
-                setEditError(submissionError instanceof Error ? submissionError.message : 'Не удалось сохранить изменения.')
-              }
-            })}
-          >
-            <label className="field">
-              <span>Начальная сумма</span>
-              <input type="number" min="0" step="1" {...register('initialAmount')} />
-            </label>
+          {canModifyProject ? (
+            <form
+              className="form form--compact"
+              onSubmit={handleSubmit(async (values) => {
+                try {
+                  const nextGlobalComment = values.globalComment?.trim() ?? ''
+                  setEditError(null)
+                  await editMutation.mutateAsync({
+                    initialAmount: parseOptionalAmount(values.initialAmount),
+                    currentAmount: parseOptionalAmount(values.currentAmount),
+                    globalComment: nextGlobalComment !== (project.globalComment ?? '') ? nextGlobalComment : undefined,
+                  })
+                } catch (submissionError) {
+                  setEditError(submissionError instanceof Error ? submissionError.message : 'Не удалось сохранить изменения.')
+                }
+              })}
+            >
+              <label className="field">
+                <span>Начальная сумма</span>
+                <input type="number" min="0" step="1" {...register('initialAmount')} />
+              </label>
 
-            <label className="field">
-              <span>Текущая сумма</span>
-              <input type="number" min="0" step="1" {...register('currentAmount')} />
-            </label>
+              <label className="field">
+                <span>Текущая сумма</span>
+                <input type="number" min="0" step="1" {...register('currentAmount')} />
+              </label>
 
-            <label className="field field--full">
-              <span>Комментарий</span>
-              <textarea rows={8} {...register('globalComment')} />
-            </label>
+              <label className="field field--full">
+                <span>Комментарий</span>
+                <textarea rows={8} {...register('globalComment')} />
+              </label>
 
-            <div className="form__footer">
-              <Button type="submit" disabled={isSubmitting || editMutation.isPending}>
-                {isSubmitting || editMutation.isPending ? 'Сохраняем...' : 'Сохранить изменения'}
-              </Button>
+              <div className="form__footer">
+                <Button type="submit" disabled={isSubmitting || editMutation.isPending}>
+                  {isSubmitting || editMutation.isPending ? 'Сохраняем...' : 'Сохранить изменения'}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="panel__body">
+              <div className="info-block">
+                Вы можете просматривать этот проект, но изменять его может только ответственный сотрудник или администратор.
+              </div>
             </div>
-          </form>
+          )}
         </section>
 
         <div className="page-stack">
@@ -265,7 +304,7 @@ export function ProjectDetailsPage() {
               </div>
             </div>
 
-            {stageError ? <div className="alert alert--error">{stageError}</div> : null}
+            {canModifyProject && stageError ? <div className="alert alert--error">{stageError}</div> : null}
 
             <div className="panel__body">
               <div className="inline-metrics">
@@ -283,7 +322,11 @@ export function ProjectDetailsPage() {
                 </div>
               </div>
 
-              {project.currentStatus === 'ACTIVE' && (project.nextStage || previousStage) ? (
+              {!canModifyProject ? (
+                <div className="info-block">
+                  Изменение этапа доступно только ответственному сотруднику или администратору.
+                </div>
+              ) : project.currentStatus === 'ACTIVE' && (project.nextStage || previousStage) ? (
                 <div className="stack-sm">
                   {project.canAdvanceStage && project.nextStage && showAdvanceComment ? (
                     <label className="field field--full">
@@ -367,7 +410,7 @@ export function ProjectDetailsPage() {
               </div>
             </div>
 
-            {statusError ? <div className="alert alert--error">{statusError}</div> : null}
+            {canModifyProject && statusError ? <div className="alert alert--error">{statusError}</div> : null}
 
             <div className="panel__body">
               <div className="inline-metrics">
@@ -379,23 +422,29 @@ export function ProjectDetailsPage() {
                 </div>
               </div>
 
-              {project.currentStatus === 'DONE' ? (
+              {!canModifyProject ? (
+                <div className="info-block">
+                  Изменение статуса доступно только ответственному сотруднику или администратору.
+                </div>
+              ) : project.currentStatus === 'DONE' ? (
                 <div className="info-block info-block--warning">
                   Проект переведён в успешное завершение. Изменение статуса больше недоступно.
                 </div>
               ) : null}
 
-              <div className="stack-sm">
-                <div className="inline-actions">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setShowStatusModal(true)}
-                    disabled={!project.canChangeStatus || project.allowedStatuses.length === 0}
-                  >
-                    Изменить статус
-                  </Button>
+              {canModifyProject ? (
+                <div className="stack-sm">
+                  <div className="inline-actions">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setShowStatusModal(true)}
+                      disabled={!project.canChangeStatus || project.allowedStatuses.length === 0}
+                    >
+                      Изменить статус
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
           </section>
         </div>

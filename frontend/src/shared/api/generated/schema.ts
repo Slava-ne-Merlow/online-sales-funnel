@@ -116,7 +116,7 @@ export interface paths {
         };
         /**
          * Get users with role USER
-         * @description Available only for ADMIN. Returns users with role USER for responsible user selection.
+         * @description Returns users with role USER for responsible user selection.
          */
         get: operations["getUsers"];
         put?: never;
@@ -173,7 +173,11 @@ export interface paths {
         get: operations["getProject"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete project
+         * @description Available only for ADMIN. Project history is removed with the project.
+         */
+        delete: operations["deleteProject"];
         options?: never;
         head?: never;
         /** Update mutable project fields */
@@ -763,6 +767,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDto"];
+                };
+            };
+            /** @description Project not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+        };
+    };
+    deleteProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Project deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only admin can delete projects */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
                 };
             };
             /** @description Project not found */

@@ -43,7 +43,7 @@ class ProjectTransitionService(
 
     @Transactional
     fun transition(projectId: UUID, actor: User, projectTransitionRequest: ProjectTransitionRequest): Project {
-        val project = getProject(projectId, actor)
+        val project = getProjectForModification(projectId, actor)
         val comment = projectTransitionRequest.comment?.trim()?.takeIf { it.isNotEmpty() }
         val newStage = projectTransitionRequest.newStage?.let { ProjectStage.valueOf(it.name) }
         val newStatus = projectTransitionRequest.newStatus?.let { ProjectStatus.valueOf(it.name) }
@@ -63,7 +63,7 @@ class ProjectTransitionService(
 
     @Transactional
     fun advance(projectId: UUID, actor: User, projectAdvanceRequest: ProjectAdvanceRequest): Project {
-        val project = getProject(projectId, actor)
+        val project = getProjectForModification(projectId, actor)
         val nextStage = resolveNextStage(project)
             ?: throw BadRequestException("Cannot move project to the next stage from its current state")
         val comment = projectAdvanceRequest.comment?.trim()?.takeIf { it.isNotEmpty() }
@@ -132,6 +132,9 @@ class ProjectTransitionService(
             .orElseThrow { NotFoundException("Project not found") }
             .asModel()
     )
+
+    private fun getProjectForModification(projectId: UUID, actor: User): Project =
+        projectAccessService.requireModificationAccess(actor, getProject(projectId, actor))
 
     private fun applyTransition(
         project: Project,

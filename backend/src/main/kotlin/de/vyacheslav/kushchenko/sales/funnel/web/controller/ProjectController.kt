@@ -24,6 +24,7 @@ import de.vyacheslav.kushchenko.sales.funnel.util.getRequestUser
 import de.vyacheslav.kushchenko.sales.funnel.util.ok
 import de.vyacheslav.kushchenko.sales.funnel.web.security.annotation.Authorized
 import org.springframework.data.domain.Sort
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Component
 import java.time.OffsetDateTime
@@ -90,6 +91,12 @@ class ProjectController(
     @Authorized
     override fun updateProject(projectId: UUID, updateProjectRequest: UpdateProjectRequest): ResponseEntity<ProjectDto> =
         projectViewService.toDto(projectService.update(projectId, getRequestUser(), updateProjectRequest)).ok()
+
+    @Authorized
+    override fun deleteProject(projectId: UUID): ResponseEntity<Unit> {
+        projectService.delete(projectId, getRequestUser())
+        return ResponseEntity(HttpStatus.NO_CONTENT)
+    }
 
     @Authorized
     override fun transitionProject(

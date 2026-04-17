@@ -41,7 +41,7 @@ export function DashboardPage() {
     status: '',
     userId: '',
   })
-  const usersQuery = useUsersQuery(user?.role === 'ADMIN')
+  const usersQuery = useUsersQuery()
   const projectsQuery = useProjectsLookupQuery()
   const historyQuery = useProjectsHistoryQuery((projectsQuery.data ?? []).map((project) => project.id))
 
@@ -200,78 +200,76 @@ export function DashboardPage() {
 
   return (
     <div className="page-stack">
-      {user?.role === 'ADMIN' ? (
-        <FilterBar title="Фильтры dashboard">
-          <label className="field">
-            <span>Изменён с</span>
-            <DateField
-              value={filters.updatedAtFrom?.slice(0, 10) ?? ''}
-              onChange={(value) =>
-                setFilters((current) => ({
-                  ...current,
-                  updatedAtFrom: value ? `${value}T00:00:00.000Z` : undefined,
-                }))
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Изменён по</span>
-            <DateField
-              value={filters.updatedAtTo?.slice(0, 10) ?? ''}
-              onChange={(value) =>
-                setFilters((current) => ({
-                  ...current,
-                  updatedAtTo: value ? `${value}T23:59:59.000Z` : undefined,
-                }))
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Источник</span>
-            <SelectField
-              value={filters.source ?? ''}
-              onChange={(value) =>
-                setFilters((current) => ({ ...current, source: value as DashboardFilters['source'] }))
-              }
-              options={[{ value: '', label: 'Все источники' }, ...projectSourceOptions]}
-            />
-          </label>
-          <label className="field">
-            <span>Этап</span>
-            <SelectField
-              value={filters.stage ?? ''}
-              onChange={(value) =>
-                setFilters((current) => ({ ...current, stage: value as DashboardFilters['stage'] }))
-              }
-              options={[{ value: '', label: 'Все этапы' }, ...projectStageOptions]}
-            />
-          </label>
-          <label className="field">
-            <span>Статус</span>
-            <SelectField
-              value={filters.status ?? ''}
-              onChange={(value) =>
-                setFilters((current) => ({ ...current, status: value as DashboardFilters['status'] }))
-              }
-              options={[{ value: '', label: 'Все статусы' }, ...projectStatusOptions]}
-            />
-          </label>
-          <label className="field">
-            <span>Ответственный</span>
-            <ComboboxField
-              value={filters.userId ?? ''}
-              onChange={(value) => setFilters((current) => ({ ...current, userId: value || undefined }))}
-              options={userOptions}
-              placeholder="Все сотрудники"
-            />
-          </label>
-        </FilterBar>
-      ) : null}
+      <FilterBar title="Фильтры dashboard">
+        <label className="field">
+          <span>Изменён с</span>
+          <DateField
+            value={filters.updatedAtFrom?.slice(0, 10) ?? ''}
+            onChange={(value) =>
+              setFilters((current) => ({
+                ...current,
+                updatedAtFrom: value ? `${value}T00:00:00.000Z` : undefined,
+              }))
+            }
+          />
+        </label>
+        <label className="field">
+          <span>Изменён по</span>
+          <DateField
+            value={filters.updatedAtTo?.slice(0, 10) ?? ''}
+            onChange={(value) =>
+              setFilters((current) => ({
+                ...current,
+                updatedAtTo: value ? `${value}T23:59:59.000Z` : undefined,
+              }))
+            }
+          />
+        </label>
+        <label className="field">
+          <span>Источник</span>
+          <SelectField
+            value={filters.source ?? ''}
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, source: value as DashboardFilters['source'] }))
+            }
+            options={[{ value: '', label: 'Все источники' }, ...projectSourceOptions]}
+          />
+        </label>
+        <label className="field">
+          <span>Этап</span>
+          <SelectField
+            value={filters.stage ?? ''}
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, stage: value as DashboardFilters['stage'] }))
+            }
+            options={[{ value: '', label: 'Все этапы' }, ...projectStageOptions]}
+          />
+        </label>
+        <label className="field">
+          <span>Статус</span>
+          <SelectField
+            value={filters.status ?? ''}
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, status: value as DashboardFilters['status'] }))
+            }
+            options={[{ value: '', label: 'Все статусы' }, ...projectStatusOptions]}
+          />
+        </label>
+        <label className="field">
+          <span>Ответственный</span>
+          <ComboboxField
+            value={filters.userId ?? ''}
+            onChange={(value) => setFilters((current) => ({ ...current, userId: value || undefined }))}
+            options={userOptions}
+            placeholder="Все сотрудники"
+          />
+        </label>
+      </FilterBar>
 
       <section className="stats-grid">
         <StatCard title="Всего проектов" value={filteredProjects.length} />
         <StatCard
-          title={user?.role === 'ADMIN' ? 'Pipeline amount' : 'Активный портфель'}
+          title="Активный портфель"
           value={formatCurrency(pipelineAmount)}
         />
         <StatCard title="В работе / отложены" value={`${statusRows.find((row) => row.key === 'ACTIVE')?.count ?? 0} / ${statusRows.find((row) => row.key === 'ON_HOLD')?.count ?? 0}`} />
@@ -284,7 +282,7 @@ export function DashboardPage() {
             <section className="panel">
               <div className="panel__header">
                 <div>
-                  <h2 className="section-title">{user?.role === 'ADMIN' ? 'Статистика по статусам' : 'Статусы'}</h2>
+                  <h2 className="section-title">Статистика по статусам</h2>
                 </div>
               </div>
               <DataTable columns={distributionColumns} rows={statusRows} getRowKey={(row) => row.key} />
@@ -293,23 +291,21 @@ export function DashboardPage() {
             <section className="panel">
               <div className="panel__header">
                 <div>
-                  <h2 className="section-title">{user?.role === 'ADMIN' ? 'Статистика по этапам' : 'Разбивка по этапам'}</h2>
+                  <h2 className="section-title">Статистика по этапам</h2>
                 </div>
               </div>
               <DataTable columns={distributionColumns} rows={stageRows} getRowKey={(row) => row.key} />
             </section>
           </div>
 
-          {user?.role === 'ADMIN' ? (
-            <section className="panel">
-              <div className="panel__header">
-                <div>
-                  <h2 className="section-title">Статистика по источнику</h2>
-                </div>
+          <section className="panel">
+            <div className="panel__header">
+              <div>
+                <h2 className="section-title">Статистика по источнику</h2>
               </div>
-              <DataTable columns={distributionColumns} rows={sourceRows} getRowKey={(row) => row.key} />
-            </section>
-          ) : null}
+            </div>
+            <DataTable columns={distributionColumns} rows={sourceRows} getRowKey={(row) => row.key} />
+          </section>
 
           <div className="content-grid">
             <section className="panel">
@@ -324,23 +320,21 @@ export function DashboardPage() {
             <section className="panel">
               <div className="panel__header">
                 <div>
-                  <h2 className="section-title">{user?.role === 'ADMIN' ? 'Recent transitions' : 'Recent activity'}</h2>
+                  <h2 className="section-title">Последние действия</h2>
                 </div>
               </div>
               <DataTable columns={activityColumns} rows={recentActivity} getRowKey={(item) => item.id} />
             </section>
           </div>
 
-          {user?.role === 'ADMIN' ? (
-            <section className="panel">
-              <div className="panel__header">
-                <div>
-                  <h2 className="section-title">Largest projects</h2>
-                </div>
+          <section className="panel">
+            <div className="panel__header">
+              <div>
+                <h2 className="section-title">Крупнейшие проекты</h2>
               </div>
-              <DataTable columns={projectColumns} rows={largestProjects} getRowKey={(project) => project.id} />
-            </section>
-          ) : null}
+            </div>
+            <DataTable columns={projectColumns} rows={largestProjects} getRowKey={(project) => project.id} />
+          </section>
         </>
       ) : (
         <EmptyState title="Данных нет" description="Нет проектов, подходящих под текущий фильтр." />

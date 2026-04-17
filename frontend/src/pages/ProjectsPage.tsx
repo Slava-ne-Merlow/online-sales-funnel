@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useProjectsLookupQuery, useProjectsQuery } from '../entities/project/queries'
 import { useUsersQuery } from '../entities/user/queries'
 import { useAuth } from '../features/auth/auth-context'
+import { queryClient } from '../shared/api/query-client'
+import { projectsApi } from '../shared/api/services'
 import type { GetProjectsParams, Project, ProjectSortDirection, ProjectSortField } from '../shared/api/types'
 import { formatCurrency, formatDate, toDateTimeEnd, toDateTimeStart } from '../shared/lib/format'
 import { buildUserOptions, resolveUserLabel } from '../shared/lib/project-analytics'
@@ -66,25 +69,36 @@ export function ProjectsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [filters, setFilters] = useState<FiltersState>(initialFilters)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const lookupQuery = useProjectsLookupQuery()
   const isAdmin = user?.role === 'ADMIN'
-  const usersQuery = useUsersQuery(isAdmin)
+  const usersQuery = useUsersQuery()
 
   const queryFilters = useMemo<GetProjectsParams>(
     () => ({
       currentStage: filters.currentStage || undefined,
       currentStatus: filters.currentStatus || undefined,
       source: filters.source || undefined,
-      responsibleUser: isAdmin ? filters.responsibleUser || undefined : undefined,
+      responsibleUser: filters.responsibleUser || undefined,
       updatedAtFrom: toDateTimeStart(filters.updatedAtFrom),
       updatedAtTo: toDateTimeEnd(filters.updatedAtTo),
       sortBy: filters.sortBy,
       sortDirection: filters.sortDirection,
     }),
-    [filters, isAdmin],
+    [filters],
   )
 
   const projectsQuery = useProjectsQuery(queryFilters)
+  const deleteMutation = useMutation({
+    mutationFn: (projectId: string) => projectsApi.deleteProject(projectId),
+    onSuccess: async () => {
+      setDeleteError(null)
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+    },
+    onError: (error) => {
+      setDeleteError(error instanceof Error ? error.message : 'Не удалось удалить проект.')
+    },
+  })
 
   const userOptions = useMemo(
     () =>
@@ -152,6 +166,29 @@ export function ProjectsPage() {
       header: 'Обновлён',
       cell: (project) => formatDate(project.updatedAt),
     },
+    ...(isAdmin
+      ? [
+          {
+            key: 'actions',
+            header: 'Действия',
+            cell: (project) => (
+              <Button
+                variant="danger"
+                disabled={deleteMutation.isPending}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  if (!window.confirm(`Удалить проект «${project.title}»? История проекта тоже будет удалена.`)) {
+                    return
+                  }
+                  deleteMutation.mutate(project.id)
+                }}
+              >
+                Удалить
+              </Button>
+            ),
+          },
+        ] satisfies Array<DataTableColumn<Project>>
+      : []),
   ]
 
   if (projectsQuery.isPending) {
@@ -202,18 +239,16 @@ export function ProjectsPage() {
           />
         </label>
 
-        {isAdmin ? (
-          <label className="field">
-            <span>Ответственный</span>
-            <ComboboxField
-              value={filters.responsibleUser}
-              onChange={(value) => setFilters((current) => ({ ...current, responsibleUser: value }))}
-              options={userOptions}
-              placeholder="Все сотрудники"
-              isClearable
-            />
-          </label>
-        ) : null}
+        <label className="field">
+          <span>Ответственный</span>
+          <ComboboxField
+            value={filters.responsibleUser}
+            onChange={(value) => setFilters((current) => ({ ...current, responsibleUser: value }))}
+            options={userOptions}
+            placeholder="Все сотрудники"
+            isClearable
+          />
+        </label>
 
         <label className="field">
           <span>Изменён с</span>
@@ -268,6 +303,8 @@ export function ProjectsPage() {
             <p className="section-hint">{projectsQuery.data.length} записей по текущему фильтру.</p>
           </div>
         </div>
+
+        {deleteError ? <div className="alert alert--error">{deleteError}</div> : null}
 
         {projectsQuery.data.length ? (
           <DataTable

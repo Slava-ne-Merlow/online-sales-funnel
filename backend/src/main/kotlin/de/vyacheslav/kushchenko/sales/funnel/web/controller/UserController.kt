@@ -8,7 +8,6 @@ import de.vyacheslav.kushchenko.sales.funnel.service.UserService
 import de.vyacheslav.kushchenko.sales.funnel.util.getRequestUser
 import de.vyacheslav.kushchenko.sales.funnel.util.ok
 import de.vyacheslav.kushchenko.sales.funnel.web.security.annotation.Authorized
-import de.vyacheslav.kushchenko.sales.funnel.web.security.annotation.IsAdmin
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Component
 
@@ -16,7 +15,7 @@ import org.springframework.stereotype.Component
 class UserController(
     private val userService: UserService,
 ) : UsersApi {
-    @IsAdmin
+    @Authorized
     override fun getUsers(): ResponseEntity<List<UserDto>> = userService.getAllRegularUsers().map { it.toDto() }.ok()
 
     @Authorized

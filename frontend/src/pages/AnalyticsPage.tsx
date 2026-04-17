@@ -94,13 +94,12 @@ function ChartCard({
 
 export function AnalyticsPage() {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'ADMIN'
   const [period, setPeriod] = useState<AnalyticsPeriod>('LAST_MONTH')
   const [source, setSource] = useState<ProjectSource | ''>('')
   const [responsibleUser, setResponsibleUser] = useState('')
   const [updatedAtFrom, setUpdatedAtFrom] = useState('')
   const [updatedAtTo, setUpdatedAtTo] = useState('')
-  const usersQuery = useUsersQuery(isAdmin)
+  const usersQuery = useUsersQuery()
   const responsibleUserOptions = useMemo(
     () =>
       buildUserOptions({
@@ -119,7 +118,7 @@ export function AnalyticsPage() {
   const analyticsQuery = useProjectAnalyticsQuery({
     period,
     source: source || undefined,
-    responsibleUser: isAdmin ? responsibleUser || undefined : undefined,
+    responsibleUser: responsibleUser || undefined,
     updatedAtFrom: toDateTimeStart(updatedAtFrom),
     updatedAtTo: toDateTimeEnd(updatedAtTo),
   })
@@ -230,18 +229,16 @@ export function AnalyticsPage() {
                 options={[{ value: '', label: 'Все источники' }, ...projectSourceOptions]}
               />
             </label>
-            {isAdmin ? (
-              <label className="field">
-                <span>Ответственный</span>
-                <ComboboxField
-                  value={responsibleUser}
-                  onChange={setResponsibleUser}
-                  options={responsibleUserOptions}
-                  placeholder="Все сотрудники"
-                  isClearable
-                />
-              </label>
-            ) : null}
+            <label className="field">
+              <span>Ответственный</span>
+              <ComboboxField
+                value={responsibleUser}
+                onChange={setResponsibleUser}
+                options={responsibleUserOptions}
+                placeholder="Все сотрудники"
+                isClearable
+              />
+            </label>
           </div>
         </div>
       </section>
