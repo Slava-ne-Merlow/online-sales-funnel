@@ -83,30 +83,44 @@ class ProjectService(
         val project = getById(projectId, actor)
         val now = Instant.now()
 
+        val initialAmountUpdated = updateProjectRequest.initialAmount != null
         val amountUpdated = updateProjectRequest.currentAmount != null
         val commentUpdated = updateProjectRequest.globalComment != null
 
-        if (!amountUpdated && !commentUpdated) {
+        if (!initialAmountUpdated && !amountUpdated && !commentUpdated) {
             throw BadRequestException("At least one mutable field must be provided")
         }
 
+        val newInitialAmount = if (initialAmountUpdated) normalizeAmount(updateProjectRequest.initialAmount) else project.initialAmount
         val newAmount = if (amountUpdated) normalizeAmount(updateProjectRequest.currentAmount) else project.currentAmount
         val newGlobalComment = if (commentUpdated) updateProjectRequest.globalComment else project.globalComment
 
+        val initialAmountChanged = initialAmountUpdated && newInitialAmount != project.initialAmount
         val amountChanged = amountUpdated && newAmount != project.currentAmount
         val commentChanged = commentUpdated && newGlobalComment != project.globalComment
 
-        if (!amountChanged && !commentChanged) {
+        if (!initialAmountChanged && !amountChanged && !commentChanged) {
             throw BadRequestException("Project update does not change any value")
         }
 
         val updatedProject = project.copy(
+            initialAmount = newInitialAmount,
             currentAmount = newAmount,
             globalComment = newGlobalComment,
             updatedAt = now,
         )
 
         val savedProject = projectRepository.save(updatedProject.asEntity()).asModel()
+
+        if (initialAmountChanged) {
+            projectHistoryService.logInitialAmountChanged(
+                projectId = savedProject.id!!,
+                oldAmount = project.initialAmount,
+                newAmount = savedProject.initialAmount,
+                actorUserId = actor.id!!,
+                createdAt = now,
+            )
+        }
 
         if (amountChanged) {
             projectHistoryService.logAmountChanged(

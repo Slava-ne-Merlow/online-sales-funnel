@@ -2,7 +2,13 @@ package de.vyacheslav.kushchenko.sales.funnel.service
 
 import de.vyacheslav.kushchenko.sales.funnel.api.model.CreateProjectRequest
 import de.vyacheslav.kushchenko.sales.funnel.api.model.ProjectSource as ProjectSourceRequest
+import de.vyacheslav.kushchenko.sales.funnel.api.model.UpdateProjectRequest
 import de.vyacheslav.kushchenko.sales.funnel.data.project.dao.ProjectEntity
+import de.vyacheslav.kushchenko.sales.funnel.data.project.dao.ProjectEntity.Companion.asEntity
+import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectSource
+import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectStage
+import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectStatus
+import de.vyacheslav.kushchenko.sales.funnel.data.project.model.Project
 import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectHistoryRepository
 import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectRepository
 import de.vyacheslav.kushchenko.sales.funnel.data.user.enum.UserRole
@@ -16,6 +22,8 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
+import java.time.Instant
+import java.util.Optional
 import java.util.UUID
 
 class ProjectServiceTest {
@@ -120,11 +128,52 @@ class ProjectServiceTest {
         verify(exactly = 1) { userService.getById(adminResponsible.id!!) }
     }
 
+    @Test
+    fun `update can change initial amount and logs it separately`() {
+        val actor = testUser(UserRole.ADMIN)
+        val project = testProject(createdById = actor.id!!)
+        every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
+
+        val result = projectService.update(
+            project.id!!,
+            actor,
+            UpdateProjectRequest(initialAmount = BigDecimal("1500")),
+        )
+
+        assertThat(result.initialAmount).isEqualByComparingTo("1500.00")
+        assertThat(result.currentAmount).isEqualByComparingTo("1000.00")
+        verify {
+            projectHistoryService.logInitialAmountChanged(
+                projectId = project.id!!,
+                oldAmount = BigDecimal("900.00"),
+                newAmount = BigDecimal("1500.00"),
+                actorUserId = actor.id!!,
+                createdAt = any(),
+            )
+        }
+    }
+
     private fun testUser(role: UserRole) = User(
         id = UUID.randomUUID(),
         email = "${role.name.lowercase()}@example.com",
         name = role.name,
         role = role,
         password = null,
+    )
+
+    private fun testProject(createdById: UUID) = Project(
+        id = UUID.randomUUID(),
+        title = "Factory lead",
+        source = ProjectSource.TENDER,
+        initialAmount = BigDecimal("900.00"),
+        currentAmount = BigDecimal("1000.00"),
+        globalComment = null,
+        currentStage = ProjectStage.QUALIFICATION,
+        currentStatus = ProjectStatus.ACTIVE,
+        pausedFromStage = null,
+        createdById = createdById,
+        responsibleUserId = null,
+        createdAt = Instant.now(),
+        updatedAt = Instant.now(),
     )
 }

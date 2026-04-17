@@ -112,8 +112,8 @@ class ProjectImportService(
 
         when (row.currentStatus) {
             ProjectStatus.DONE -> {
-                if (row.currentStage != ProjectStage.CONTRACTED) {
-                    throw BadRequestException("Import row $title with DONE status must be on CONTRACTED stage")
+                if (row.currentStage != ProjectStage.CONTRACTED && row.currentStage != ProjectStage.WAITING_FOR_PAYMENT) {
+                    throw BadRequestException("Import row $title with DONE status must be on CONTRACTED or WAITING_FOR_PAYMENT stage")
                 }
             }
 

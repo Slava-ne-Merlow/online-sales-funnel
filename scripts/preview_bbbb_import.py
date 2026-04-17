@@ -23,7 +23,7 @@ XLSX_NS = {
 
 DEFAULT_SHEETS = ("Певцов", "Ткачев", "Рашидов")
 DEFAULT_SOURCE = "DIRECT_SALES"
-DEFAULT_FALLBACK_CREATED_DATE = date(2026, 3, 13)
+DEFAULT_FALLBACK_UPDATED_DATE = date(2026, 3, 13)
 EXCEL_EPOCH = datetime(1899, 12, 30)
 
 SOURCE_MAP = {
@@ -47,6 +47,17 @@ PT_STATUS_AMOUNT_COLUMNS = {
     "T": "ON_HOLD",
 }
 
+PT_STATE_DATE_COLUMNS = {
+    "F": "E",
+    "H": "G",
+    "J": "I",
+    "L": "K",
+    "N": "M",
+    "P": "O",
+    "R": "Q",
+    "T": "S",
+}
+
 RASHIDOV_ACTIVE_AMOUNT_COLUMNS = {
     "D": "QUALIFICATION",
     "E": "PROPOSAL",
@@ -59,6 +70,12 @@ RASHIDOV_STATUS_AMOUNT_COLUMNS = {
     "J": "DONE",
     "L": "LOST",
     "N": "ON_HOLD",
+}
+
+RASHIDOV_STATE_DATE_COLUMNS = {
+    "J": "I",
+    "L": "K",
+    "N": "M",
 }
 
 NUMERIC_TITLE_RE = re.compile(r"^[\d\s.,]+$")
@@ -76,6 +93,7 @@ class ImportPreviewRow:
     initial_amount: str | None
     current_amount: str | None
     created_at: str | None
+    updated_at: str | None
     comment: str | None
     issues: list[str]
     ready_for_import: bool
@@ -210,14 +228,14 @@ def preview_pt_tk_row(
     sheet: str,
     row_number: int,
     values: dict[str, str | None],
-    fallback_created_date: date,
+    fallback_updated_date: date,
     default_source: str,
 ) -> ImportPreviewRow:
     title = normalize_text(values.get("C"))
     if title is None:
-        return ImportPreviewRow(sheet, row_number, None, normalize_text(values.get("B")), None, None, None, None, None, None, None, ["missing_title"], False, "missing_title")
+        return ImportPreviewRow(sheet, row_number, None, normalize_text(values.get("B")), None, None, None, None, None, None, None, None, ["missing_title"], False, "missing_title")
     if is_summary_title(title):
-        return ImportPreviewRow(sheet, row_number, title, normalize_text(values.get("B")), None, None, None, None, None, None, None, ["summary_row"], False, "summary_row")
+        return ImportPreviewRow(sheet, row_number, title, normalize_text(values.get("B")), None, None, None, None, None, None, None, None, ["summary_row"], False, "summary_row")
 
     state_column, state_issues = select_state(values, PT_ACTIVE_AMOUNT_COLUMNS, PT_STATUS_AMOUNT_COLUMNS)
     if state_column is None:
@@ -233,6 +251,7 @@ def preview_pt_tk_row(
             None,
             None,
             None,
+            None,
             state_issues,
             False,
             state_issues[0].split(":")[0],
@@ -240,9 +259,13 @@ def preview_pt_tk_row(
 
     current_amount = parse_decimal(values.get(state_column))
     initial_amount = parse_decimal(values.get("D")) or current_amount
-    created_at = parse_excel_date(values.get("A")) or fallback_created_date
+    updated_at = parse_excel_date(values.get(PT_STATE_DATE_COLUMNS[state_column])) or fallback_updated_date
+    created_at = parse_excel_date(values.get("A")) or updated_at
     source, issues = resolve_source(values.get("B"), default_source)
     issues.extend(state_issues)
+    if updated_at < created_at:
+        updated_at = created_at
+        issues.append("updated_at_aligned_to_created_at")
 
     if current_amount is None:
         issues.append("invalid_current_amount")
@@ -264,6 +287,7 @@ def preview_pt_tk_row(
         initial_amount=format_decimal(initial_amount),
         current_amount=format_decimal(current_amount),
         created_at=f"{created_at.isoformat()}T00:00:00Z",
+        updated_at=f"{updated_at.isoformat()}T00:00:00Z",
         comment=normalize_text(values.get("V")),
         issues=issues,
         ready_for_import=not any(issue.startswith(("missing_", "invalid_", "multiple_")) or issue == "no_stage_or_status_amount" for issue in issues),
@@ -282,9 +306,9 @@ def preview_rashidov_row(
 ) -> ImportPreviewRow:
     title = normalize_text(values.get("C"))
     if title is None:
-        return ImportPreviewRow("Рашидов", row_number, None, normalize_text(values.get("B")), None, None, None, None, None, None, None, ["missing_title"], False, "missing_title")
+        return ImportPreviewRow("Рашидов", row_number, None, normalize_text(values.get("B")), None, None, None, None, None, None, None, None, ["missing_title"], False, "missing_title")
     if is_summary_title(title):
-        return ImportPreviewRow("Рашидов", row_number, title, normalize_text(values.get("B")), None, None, None, None, None, None, None, ["summary_row"], False, "summary_row")
+        return ImportPreviewRow("Рашидов", row_number, title, normalize_text(values.get("B")), None, None, None, None, None, None, None, None, ["summary_row"], False, "summary_row")
 
     state_column, state_issues = select_state(values, RASHIDOV_ACTIVE_AMOUNT_COLUMNS, RASHIDOV_STATUS_AMOUNT_COLUMNS)
     if state_column is None:
@@ -300,6 +324,7 @@ def preview_rashidov_row(
             None,
             None,
             None,
+            None,
             state_issues,
             False,
             state_issues[0].split(":")[0],
@@ -307,7 +332,8 @@ def preview_rashidov_row(
 
     current_amount = parse_decimal(values.get(state_column))
     initial_amount = current_amount
-    created_at = parse_excel_date(values.get("A"))
+    updated_at = parse_excel_date(values.get(RASHIDOV_STATE_DATE_COLUMNS.get(state_column, ""))) or parse_excel_date(values.get("A"))
+    created_at = parse_excel_date(values.get("A")) or updated_at
     source, issues = resolve_source(values.get("B"), default_source)
     issues.extend(state_issues)
 
@@ -333,6 +359,7 @@ def preview_rashidov_row(
         initial_amount=format_decimal(initial_amount),
         current_amount=format_decimal(current_amount),
         created_at=f"{created_at.isoformat()}T00:00:00Z" if created_at else None,
+        updated_at=f"{updated_at.isoformat()}T00:00:00Z" if updated_at else None,
         comment=normalize_text(values.get("P")),
         issues=issues,
         ready_for_import=not any(issue.startswith(("missing_", "invalid_", "multiple_")) or issue == "no_stage_or_status_amount" for issue in issues),
@@ -344,7 +371,7 @@ def preview_rashidov_row(
     )
 
 
-def parse_sheet_rows(reader: WorkbookReader, sheet: str, fallback_created_date: date, default_source: str) -> list[ImportPreviewRow]:
+def parse_sheet_rows(reader: WorkbookReader, sheet: str, fallback_updated_date: date, default_source: str) -> list[ImportPreviewRow]:
     rows: list[ImportPreviewRow] = []
     for row in reader.iter_rows(sheet):
         row_number = int(row.get("r"))
@@ -370,20 +397,20 @@ def parse_sheet_rows(reader: WorkbookReader, sheet: str, fallback_created_date: 
             continue
 
         if sheet in ("Певцов", "Ткачев"):
-            rows.append(preview_pt_tk_row(sheet, row_number, values, fallback_created_date, default_source))
+            rows.append(preview_pt_tk_row(sheet, row_number, values, fallback_updated_date, default_source))
         else:
             rows.append(preview_rashidov_row(row_number, values, default_source))
     return rows
 
 
-def parse_workbook(path: Path, sheets: list[str], fallback_created_date: date, default_source: str) -> dict[str, Any]:
+def parse_workbook(path: Path, sheets: list[str], fallback_updated_date: date, default_source: str) -> dict[str, Any]:
     reader = WorkbookReader(path)
     try:
         rows: list[ImportPreviewRow] = []
         for sheet in sheets:
             if sheet not in reader.sheets:
                 raise SystemExit(f"Sheet '{sheet}' not found in {path}")
-            rows.extend(parse_sheet_rows(reader, sheet, fallback_created_date, default_source))
+            rows.extend(parse_sheet_rows(reader, sheet, fallback_updated_date, default_source))
 
         ready_rows = [row for row in rows if row.ready_for_import]
         skipped_rows = [row for row in rows if row.skip_reason is not None]
@@ -419,7 +446,7 @@ def print_summary(report: dict[str, Any], show_ready: int, show_skipped: int) ->
                 f"  {row['sheet']}#{row['row_number']}: {row['title']} | "
                 f"stage={row['current_stage']} status={row['current_status']} "
                 f"current={row['current_amount']} initial={row['initial_amount']} "
-                f"createdAt={row['created_at']}"
+                f"createdAt={row['created_at']} updatedAt={row['updated_at']}"
             )
 
     if skipped_rows:
@@ -448,6 +475,7 @@ def build_payload(report: dict[str, Any], dry_run: bool) -> dict[str, Any]:
                 "currentStage": row["current_stage"],
                 "currentStatus": row["current_status"],
                 "createdAt": row["created_at"],
+                "updatedAt": row["updated_at"],
                 "responsibleUserId": None,
             }
         )
@@ -472,6 +500,7 @@ def build_payload_by_sheet(report: dict[str, Any], dry_run: bool) -> dict[str, d
                 "currentStage": row["current_stage"],
                 "currentStatus": row["current_status"],
                 "createdAt": row["created_at"],
+                "updatedAt": row["updated_at"],
                 "responsibleUserId": None,
             }
         )
@@ -553,10 +582,10 @@ def parse_date(value: str) -> date:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Preview one-time import plan for bbbb.xlsx")
-    parser.add_argument("xlsx", type=Path, help="Path to bbbb.xlsx")
+    parser = argparse.ArgumentParser(description="Preview one-time import plan for workbook import")
+    parser.add_argument("xlsx", type=Path, help="Path to workbook .xlsx")
     parser.add_argument("--sheet", dest="sheets", action="append", help="Sheet to include. Can be passed multiple times.")
-    parser.add_argument("--fallback-created-date", type=parse_date, default=DEFAULT_FALLBACK_CREATED_DATE, help="Fallback createdAt for Певцов/Ткачев rows without date in YYYY-MM-DD")
+    parser.add_argument("--fallback-updated-date", type=parse_date, default=DEFAULT_FALLBACK_UPDATED_DATE, help="Fallback updatedAt for Певцов/Ткачев rows without last-change date in YYYY-MM-DD")
     parser.add_argument("--default-source", choices=sorted(SOURCE_MAP.values()), default=DEFAULT_SOURCE, help="Fallback source when source cell is empty")
     parser.add_argument("--json", action="store_true", help="Print full JSON report")
     parser.add_argument("--payload-json", action="store_true", help="Print backend payload with only ready rows")
@@ -568,7 +597,7 @@ def main() -> None:
     args = parser.parse_args()
 
     sheets = list(dict.fromkeys(args.sheets or list(DEFAULT_SHEETS)))
-    report = parse_workbook(args.xlsx, sheets, args.fallback_created_date, args.default_source)
+    report = parse_workbook(args.xlsx, sheets, args.fallback_updated_date, args.default_source)
 
     if args.payload_json:
         print(json.dumps(build_payload(report, dry_run=not args.apply), ensure_ascii=False, indent=2))

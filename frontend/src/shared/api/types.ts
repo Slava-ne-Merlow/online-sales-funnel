@@ -21,6 +21,7 @@ export type ProjectTransitionRequest = components['schemas']['ProjectTransitionR
 export type ProjectAnalytics = components['schemas']['ProjectAnalyticsDto']
 export type ProjectStageDistributionItem = components['schemas']['ProjectStageDistributionItemDto']
 export type ProjectStatusDistributionItem = components['schemas']['ProjectStatusDistributionItemDto']
+export type ProjectStageStatusDistributionItem = components['schemas']['ProjectStageStatusDistributionItemDto']
 export type ProjectSourceDistributionItem = components['schemas']['ProjectSourceDistributionItemDto']
 export type ProjectTrendPoint = components['schemas']['ProjectTrendPointDto']
 export type ProjectFunnelSummaryItem = components['schemas']['ProjectFunnelSummaryItemDto']

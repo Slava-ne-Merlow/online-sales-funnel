@@ -50,6 +50,25 @@ class ProjectHistoryService(
         )
     }
 
+    fun logInitialAmountChanged(
+        projectId: UUID,
+        oldAmount: BigDecimal?,
+        newAmount: BigDecimal?,
+        actorUserId: UUID,
+        createdAt: Instant,
+    ) {
+        save(
+            ProjectHistoryEntry(
+                projectId = projectId,
+                eventType = ProjectEventType.INITIAL_AMOUNT_CHANGED,
+                oldAmount = oldAmount,
+                newAmount = newAmount,
+                actorUserId = actorUserId,
+                createdAt = createdAt,
+            )
+        )
+    }
+
     fun logGlobalCommentChanged(
         projectId: UUID,
         oldGlobalComment: String?,

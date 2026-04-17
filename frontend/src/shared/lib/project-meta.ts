@@ -8,8 +8,8 @@ import type {
 export const projectStageOptions: Array<{ value: ProjectStage; label: string }> = [
   { value: 'QUALIFICATION', label: 'Проработка' },
   { value: 'PROPOSAL', label: 'КП' },
+  { value: 'INVOICE_ISSUED', label: 'Счет / договор' },
   { value: 'CONTRACTED', label: 'Законтрактован' },
-  { value: 'INVOICE_ISSUED', label: 'Счет' },
   { value: 'WAITING_FOR_PAYMENT', label: 'Ожидаем доплату' },
 ]
 
@@ -34,6 +34,7 @@ export const projectEventTypeLabels: Record<ProjectEventType, string> = {
   STATUS_CHANGED: 'Изменён статус',
   STAGE_STATUS_CHANGED: 'Изменены этап и статус',
   AMOUNT_CHANGED: 'Изменена сумма',
+  INITIAL_AMOUNT_CHANGED: 'Изменена начальная сумма',
   GLOBAL_COMMENT_CHANGED: 'Изменён общий комментарий',
   SOURCE_SET: 'Установлен источник',
   RESTORED_FROM_PAUSE: 'Возврат из паузы',
@@ -45,6 +46,7 @@ export const projectEventTypeOptions: Array<{ value: ProjectEventType; label: st
   { value: 'STATUS_CHANGED', label: 'Смена статуса' },
   { value: 'STAGE_STATUS_CHANGED', label: 'Смена этапа и статуса' },
   { value: 'AMOUNT_CHANGED', label: 'Изменение суммы' },
+  { value: 'INITIAL_AMOUNT_CHANGED', label: 'Изменение начальной суммы' },
   { value: 'GLOBAL_COMMENT_CHANGED', label: 'Изменение комментария' },
   { value: 'SOURCE_SET', label: 'Изменение источника' },
   { value: 'RESTORED_FROM_PAUSE', label: 'Возобновление после паузы' },

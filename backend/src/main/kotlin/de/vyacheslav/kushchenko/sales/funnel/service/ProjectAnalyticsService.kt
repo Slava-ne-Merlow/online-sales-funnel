@@ -7,17 +7,20 @@ import de.vyacheslav.kushchenko.sales.funnel.api.model.ProjectSource as ProjectS
 import de.vyacheslav.kushchenko.sales.funnel.api.model.ProjectSourceDistributionItemDto
 import de.vyacheslav.kushchenko.sales.funnel.api.model.ProjectStage as ProjectStageDto
 import de.vyacheslav.kushchenko.sales.funnel.api.model.ProjectStageDistributionItemDto
+import de.vyacheslav.kushchenko.sales.funnel.api.model.ProjectStageStatusDistributionItemDto
 import de.vyacheslav.kushchenko.sales.funnel.api.model.ProjectStatus as ProjectStatusDto
 import de.vyacheslav.kushchenko.sales.funnel.api.model.ProjectStatusDistributionItemDto
 import de.vyacheslav.kushchenko.sales.funnel.api.model.ProjectTrendPointDto
 import de.vyacheslav.kushchenko.sales.funnel.api.model.TopProjectDto
 import de.vyacheslav.kushchenko.sales.funnel.data.project.dao.ProjectEntity.Companion.asModel
 import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.AnalyticsPeriod
+import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectEventType
 import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectSource
 import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectStage
 import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectStatus
 import de.vyacheslav.kushchenko.sales.funnel.data.project.model.Project
 import de.vyacheslav.kushchenko.sales.funnel.data.project.model.ProjectFilter
+import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectHistoryRepository
 import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectRepository
 import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectSpecifications
 import de.vyacheslav.kushchenko.sales.funnel.data.user.model.User
@@ -34,9 +37,15 @@ import java.util.UUID
 @Service
 class ProjectAnalyticsService(
     private val projectRepository: ProjectRepository,
+    private val projectHistoryRepository: ProjectHistoryRepository,
     private val projectAccessService: ProjectAccessService,
     private val userService: UserService,
 ) {
+    private val movementEventTypes = listOf(
+        ProjectEventType.STAGE_CHANGED,
+        ProjectEventType.STATUS_CHANGED,
+        ProjectEventType.STAGE_STATUS_CHANGED,
+    )
 
     fun getAnalytics(
         actor: User,
@@ -54,12 +63,21 @@ class ProjectAnalyticsService(
             ProjectFilter(
                 source = source,
                 responsibleUser = responsibleUser,
-                updatedAtFrom = effectiveUpdatedAtFrom,
-                updatedAtTo = effectiveUpdatedAtTo,
             )
         )
 
-        val projects = projectRepository.findAll(ProjectSpecifications.byFilter(visibleFilter)).map { it.asModel() }
+        val movementEvents = projectHistoryRepository.findAllByEventTypeInAndCreatedAtBetween(
+            movementEventTypes,
+            effectiveUpdatedAtFrom ?: Instant.EPOCH,
+            effectiveUpdatedAtTo,
+        )
+        val movementProjectIds = movementEvents.mapTo(linkedSetOf()) { it.projectId }
+        val projects = projectRepository.findAll(ProjectSpecifications.byFilter(visibleFilter))
+            .map { it.asModel() }
+            .filter { it.id in movementProjectIds }
+        val latestMovementByProjectId = movementEvents
+            .groupBy { it.projectId }
+            .mapValues { (_, events) -> events.maxOf { it.createdAt } }
         val totalAmount = projects.sumAmounts()
         val responsibleNames = userService.getDisplayNames(projects.mapNotNullTo(linkedSetOf()) { it.responsibleUserId })
 
@@ -100,6 +118,21 @@ class ProjectAnalyticsService(
                     )
                 }
             },
+            stageStatusDistribution = ProjectStatus.entries.flatMap { status ->
+                val statusProjects = projects.filter { it.currentStatus == status }
+                val statusAmount = statusProjects.sumAmounts()
+                ProjectStage.entries.map { stage ->
+                    val stageProjects = statusProjects.filter { it.currentStage == stage }
+                    val stageAmount = stageProjects.sumAmounts()
+                    ProjectStageStatusDistributionItemDto(
+                        stage = ProjectStageDto.valueOf(stage.name),
+                        status = ProjectStatusDto.valueOf(status.name),
+                        count = stageProjects.size,
+                        amount = stageAmount,
+                        percentOfStatusAmount = percentOfTotal(stageAmount, statusAmount),
+                    )
+                }
+            },
             sourceDistribution = ProjectSource.entries.map { projectSource ->
                 distributionItem(
                     count = projects.count { it.source == projectSource },
@@ -114,7 +147,7 @@ class ProjectAnalyticsService(
                     )
                 }
             },
-            periodTrend = buildTrend(projects, period, effectiveUpdatedAtFrom, effectiveUpdatedAtTo, now),
+            periodTrend = buildTrend(projects, latestMovementByProjectId, period, effectiveUpdatedAtFrom, effectiveUpdatedAtTo, now),
             funnelSummary = ProjectStage.entries.map { stage ->
                 ProjectFunnelSummaryItemDto(
                     stage = ProjectStageDto.valueOf(stage.name),
@@ -140,6 +173,7 @@ class ProjectAnalyticsService(
 
     private fun buildTrend(
         projects: List<Project>,
+        latestMovementByProjectId: Map<UUID, Instant>,
         period: AnalyticsPeriod,
         updatedAtFrom: Instant?,
         updatedAtTo: Instant?,
@@ -150,7 +184,7 @@ class ProjectAnalyticsService(
             AnalyticsPeriod.LAST_WEEK, AnalyticsPeriod.LAST_MONTH -> {
                 val startDate = (updatedAtFrom ?: resolveUpdatedAtFrom(period, now) ?: now).atZone(zone).toLocalDate()
                 val endDate = (updatedAtTo ?: now).atZone(zone).toLocalDate()
-                val grouped = projects.groupBy { it.updatedAt.atZone(zone).toLocalDate() }
+                val grouped = projects.groupBy { latestMovementByProjectId[it.id]?.atZone(zone)?.toLocalDate() }
 
                 generateSequence(startDate) { current ->
                     current.plusDays(1).takeIf { !it.isAfter(endDate) }
@@ -170,12 +204,12 @@ class ProjectAnalyticsService(
                     AnalyticsPeriod.LAST_YEAR -> YearMonth.from((updatedAtFrom ?: resolveUpdatedAtFrom(period, now) ?: now).atZone(zone))
                     AnalyticsPeriod.ALL_TIME -> {
                         updatedAtFrom?.let { YearMonth.from(it.atZone(zone)) }
-                            ?: projects.minOfOrNull { YearMonth.from(it.updatedAt.atZone(zone)) }
+                            ?: latestMovementByProjectId.values.minOfOrNull { YearMonth.from(it.atZone(zone)) }
                             ?: endMonth
                     }
                     else -> endMonth
                 }
-                val grouped = projects.groupBy { YearMonth.from(it.updatedAt.atZone(zone)) }
+                val grouped = projects.groupBy { latestMovementByProjectId[it.id]?.let { timestamp -> YearMonth.from(timestamp.atZone(zone)) } }
 
                 generateSequence(startMonth) { current ->
                     current.plusMonths(1).takeIf { !it.isAfter(endMonth) }

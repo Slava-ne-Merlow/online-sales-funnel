@@ -604,8 +604,8 @@ components:
       enum:
         - QUALIFICATION
         - PROPOSAL
-        - CONTRACTED
         - INVOICE_ISSUED
+        - CONTRACTED
         - WAITING_FOR_PAYMENT
 
     ProjectStatus:
@@ -641,6 +641,7 @@ components:
         - STATUS_CHANGED
         - STAGE_STATUS_CHANGED
         - AMOUNT_CHANGED
+        - INITIAL_AMOUNT_CHANGED
         - GLOBAL_COMMENT_CHANGED
         - SOURCE_SET
         - RESTORED_FROM_PAUSE
@@ -750,6 +751,8 @@ components:
     UpdateProjectRequest:
       type: object
       properties:
+        initialAmount:
+          type: number
         currentAmount:
           type: number
         globalComment:
@@ -832,6 +835,7 @@ components:
         - inactiveAmount
         - stageDistribution
         - statusDistribution
+        - stageStatusDistribution
         - sourceDistribution
         - periodTrend
         - funnelSummary
@@ -862,6 +866,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProjectStatusDistributionItemDto'
+        stageStatusDistribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectStageStatusDistributionItemDto'
         sourceDistribution:
           type: array
           items:
@@ -913,6 +921,27 @@ components:
         amount:
           type: number
         percentOfTotalAmount:
+          type: number
+
+    ProjectStageStatusDistributionItemDto:
+      type: object
+      required:
+        - stage
+        - status
+        - count
+        - amount
+        - percentOfStatusAmount
+      properties:
+        stage:
+          $ref: '#/components/schemas/ProjectStage'
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        count:
+          type: integer
+          format: int32
+        amount:
+          type: number
+        percentOfStatusAmount:
           type: number
 
     ProjectSourceDistributionItemDto:

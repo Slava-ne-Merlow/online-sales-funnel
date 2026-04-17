@@ -27,17 +27,17 @@ class ProjectTransitionService(
 
     private val stageTransitions = mapOf(
         ProjectStage.QUALIFICATION to setOf(ProjectStage.PROPOSAL),
-        ProjectStage.PROPOSAL to setOf(ProjectStage.QUALIFICATION, ProjectStage.CONTRACTED),
-        ProjectStage.CONTRACTED to setOf(ProjectStage.PROPOSAL, ProjectStage.INVOICE_ISSUED),
-        ProjectStage.INVOICE_ISSUED to setOf(ProjectStage.CONTRACTED, ProjectStage.WAITING_FOR_PAYMENT),
-        ProjectStage.WAITING_FOR_PAYMENT to emptySet(),
+        ProjectStage.PROPOSAL to setOf(ProjectStage.QUALIFICATION, ProjectStage.INVOICE_ISSUED),
+        ProjectStage.INVOICE_ISSUED to setOf(ProjectStage.PROPOSAL, ProjectStage.CONTRACTED),
+        ProjectStage.CONTRACTED to setOf(ProjectStage.INVOICE_ISSUED, ProjectStage.WAITING_FOR_PAYMENT),
+        ProjectStage.WAITING_FOR_PAYMENT to setOf(ProjectStage.CONTRACTED),
     )
 
     private val mainRouteNextStages = mapOf(
         ProjectStage.QUALIFICATION to ProjectStage.PROPOSAL,
-        ProjectStage.PROPOSAL to ProjectStage.CONTRACTED,
-        ProjectStage.CONTRACTED to ProjectStage.INVOICE_ISSUED,
-        ProjectStage.INVOICE_ISSUED to ProjectStage.WAITING_FOR_PAYMENT,
+        ProjectStage.PROPOSAL to ProjectStage.INVOICE_ISSUED,
+        ProjectStage.INVOICE_ISSUED to ProjectStage.CONTRACTED,
+        ProjectStage.CONTRACTED to ProjectStage.WAITING_FOR_PAYMENT,
         ProjectStage.WAITING_FOR_PAYMENT to null,
     )
 
@@ -183,8 +183,8 @@ class ProjectTransitionService(
             throw BadRequestException("Transition request does not change the project")
         }
 
-        if (newStatus == ProjectStatus.DONE && project.currentStage != ProjectStage.CONTRACTED) {
-            throw BadRequestException("Only projects on CONTRACTED stage can be completed")
+        if (newStatus == ProjectStatus.DONE && !project.currentStage.canBeCompleted()) {
+            throw BadRequestException("Only projects on CONTRACTED or WAITING_FOR_PAYMENT stage can be completed")
         }
     }
 
@@ -221,11 +221,17 @@ class ProjectTransitionService(
     }
 
     private fun resolveAllowedStatuses(project: Project): List<ProjectStatus> = when (project.currentStatus) {
-        ProjectStatus.ACTIVE -> listOf(ProjectStatus.ON_HOLD, ProjectStatus.LOST, ProjectStatus.INACTIVE, ProjectStatus.DONE)
-        ProjectStatus.ON_HOLD -> listOf(ProjectStatus.ACTIVE, ProjectStatus.LOST, ProjectStatus.INACTIVE, ProjectStatus.DONE)
-        ProjectStatus.LOST -> listOf(ProjectStatus.ACTIVE, ProjectStatus.ON_HOLD, ProjectStatus.INACTIVE, ProjectStatus.DONE)
-        ProjectStatus.INACTIVE -> listOf(ProjectStatus.ACTIVE, ProjectStatus.ON_HOLD, ProjectStatus.LOST, ProjectStatus.DONE)
+        ProjectStatus.ACTIVE -> listOf(ProjectStatus.ON_HOLD, ProjectStatus.LOST, ProjectStatus.INACTIVE)
+        ProjectStatus.ON_HOLD -> listOf(ProjectStatus.ACTIVE, ProjectStatus.LOST, ProjectStatus.INACTIVE)
+        ProjectStatus.LOST -> listOf(ProjectStatus.ACTIVE, ProjectStatus.ON_HOLD, ProjectStatus.INACTIVE)
+        ProjectStatus.INACTIVE -> listOf(ProjectStatus.ACTIVE, ProjectStatus.ON_HOLD, ProjectStatus.LOST)
         ProjectStatus.DONE -> emptyList()
+    }.let { statuses ->
+        if (project.currentStatus != ProjectStatus.DONE && project.currentStage.canBeCompleted()) {
+            statuses + ProjectStatus.DONE
+        } else {
+            statuses
+        }
     }
 
     private fun resolveAllowedStageTransitions(project: Project): List<ProjectStage> {
@@ -235,6 +241,9 @@ class ProjectTransitionService(
 
         return stageTransitions[project.currentStage].orEmpty().toList()
     }
+
+    private fun ProjectStage.canBeCompleted(): Boolean =
+        this == ProjectStage.CONTRACTED || this == ProjectStage.WAITING_FOR_PAYMENT
 
     private data class TransitionResult(
         val project: Project,

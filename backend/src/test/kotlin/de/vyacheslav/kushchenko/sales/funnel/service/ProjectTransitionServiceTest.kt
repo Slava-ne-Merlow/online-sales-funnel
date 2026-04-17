@@ -72,7 +72,7 @@ class ProjectTransitionServiceTest {
             projectTransitionService.transition(
                 project.id!!,
                 actor,
-                ProjectTransitionRequest(newStage = ProjectStageRequest.CONTRACTED),
+                ProjectTransitionRequest(newStage = ProjectStageRequest.INVOICE_ISSUED),
             )
         }
             .isInstanceOfSatisfying(BadRequestException::class.java) {
@@ -91,7 +91,7 @@ class ProjectTransitionServiceTest {
                 project.id!!,
                 actor,
                 ProjectTransitionRequest(
-                    newStage = ProjectStageRequest.CONTRACTED,
+                    newStage = ProjectStageRequest.INVOICE_ISSUED,
                     newStatus = ProjectStatusRequest.ON_HOLD,
                 ),
             )
@@ -186,7 +186,7 @@ class ProjectTransitionServiceTest {
     @Test
     fun `blocks completing project outside contracted stage`() {
         val actor = testActor()
-        val project = testProject(currentStage = ProjectStage.INVOICE_ISSUED, createdById = actor.id!!)
+        val project = testProject(currentStage = ProjectStage.PROPOSAL, createdById = actor.id!!)
         every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
 
         assertThatThrownBy {
@@ -197,8 +197,24 @@ class ProjectTransitionServiceTest {
             )
         }
             .isInstanceOfSatisfying(BadRequestException::class.java) {
-                assertThat(it.error.message).isEqualTo("Only projects on CONTRACTED stage can be completed")
+                assertThat(it.error.message).isEqualTo("Only projects on CONTRACTED or WAITING_FOR_PAYMENT stage can be completed")
             }
+    }
+
+    @Test
+    fun `allows completing project on waiting for payment stage`() {
+        val actor = testActor()
+        val project = testProject(currentStage = ProjectStage.WAITING_FOR_PAYMENT, createdById = actor.id!!)
+        every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
+
+        val result = projectTransitionService.transition(
+            project.id!!,
+            actor,
+            ProjectTransitionRequest(newStatus = ProjectStatusRequest.DONE),
+        )
+
+        assertThat(result.currentStage).isEqualTo(ProjectStage.WAITING_FOR_PAYMENT)
+        assertThat(result.currentStatus).isEqualTo(ProjectStatus.DONE)
     }
 
     @Test
@@ -213,14 +229,14 @@ class ProjectTransitionServiceTest {
             ProjectAdvanceRequest(),
         )
 
-        assertThat(result.currentStage).isEqualTo(ProjectStage.CONTRACTED)
+        assertThat(result.currentStage).isEqualTo(ProjectStage.INVOICE_ISSUED)
         assertThat(result.currentStatus).isEqualTo(ProjectStatus.ACTIVE)
     }
 
     @Test
-    fun `advance moves contracted project to invoice without changing status`() {
+    fun `advance moves invoice project to contracted without changing status`() {
         val actor = testActor()
-        val project = testProject(currentStage = ProjectStage.CONTRACTED, createdById = actor.id!!)
+        val project = testProject(currentStage = ProjectStage.INVOICE_ISSUED, createdById = actor.id!!)
         every { projectRepository.findById(project.id!!) } returns Optional.of(project.asEntity())
 
         val result = projectTransitionService.advance(
@@ -229,7 +245,7 @@ class ProjectTransitionServiceTest {
             ProjectAdvanceRequest(comment = "Final payment received"),
         )
 
-        assertThat(result.currentStage).isEqualTo(ProjectStage.INVOICE_ISSUED)
+        assertThat(result.currentStage).isEqualTo(ProjectStage.CONTRACTED)
         assertThat(result.currentStatus).isEqualTo(ProjectStatus.ACTIVE)
     }
 
@@ -246,7 +262,6 @@ class ProjectTransitionServiceTest {
             ProjectStatus.ON_HOLD,
             ProjectStatus.LOST,
             ProjectStatus.INACTIVE,
-            ProjectStatus.DONE,
         )
         assertThat(metadata.allowedStageTransitions).containsExactly(ProjectStage.PROPOSAL)
     }

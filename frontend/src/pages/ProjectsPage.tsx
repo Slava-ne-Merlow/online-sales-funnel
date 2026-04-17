@@ -180,8 +180,7 @@ export function ProjectsPage() {
           <SelectField
             value={filters.currentStage}
             onChange={(value) => setFilters((current) => ({ ...current, currentStage: value }))}
-            options={projectStageOptions}
-            placeholder="Все этапы"
+            options={[{ value: '', label: 'Все этапы' }, ...projectStageOptions]}
           />
         </label>
 
@@ -190,8 +189,7 @@ export function ProjectsPage() {
           <SelectField
             value={filters.currentStatus}
             onChange={(value) => setFilters((current) => ({ ...current, currentStatus: value }))}
-            options={projectStatusOptions}
-            placeholder="Все статусы"
+            options={[{ value: '', label: 'Все статусы' }, ...projectStatusOptions]}
           />
         </label>
 
@@ -263,7 +261,7 @@ export function ProjectsPage() {
         </label>
       </FilterBar>
 
-      <section className="panel">
+      <section className="panel project-list-panel">
         <div className="panel__header">
           <div>
             <h2 className="section-title">Список проектов</h2>

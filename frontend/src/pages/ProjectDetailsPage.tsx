@@ -8,12 +8,14 @@ import { useProjectHistoryQuery, useProjectQuery } from '../entities/project/que
 import { ProjectTransitionForm } from '../features/projects/ProjectTransitionForm'
 import { queryClient } from '../shared/api/query-client'
 import { projectsApi } from '../shared/api/services'
+import type { ProjectStage, ProjectTransitionRequest } from '../shared/api/types'
 import { formatCurrency, formatDateTime } from '../shared/lib/format'
 import { buildTimelineItems } from '../shared/lib/project-history'
 import {
   getProjectSourceLabel,
   getProjectStageLabel,
   getProjectStatusLabel,
+  isBackwardStageChange,
 } from '../shared/lib/project-meta'
 import { Button } from '../shared/ui/Button'
 import { EmptyState, ErrorState, LoadingState } from '../shared/ui/States'
@@ -21,6 +23,7 @@ import { StatusChip } from '../shared/ui/StatusChip'
 import { Timeline } from '../shared/ui/Timeline'
 
 const editSchema = z.object({
+  initialAmount: z.string().optional(),
   currentAmount: z.string().optional(),
   globalComment: z.string().optional(),
 })
@@ -53,6 +56,7 @@ export function ProjectDetailsPage() {
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [showAdvanceComment, setShowAdvanceComment] = useState(false)
   const [advanceComment, setAdvanceComment] = useState('')
+  const [rollbackComment, setRollbackComment] = useState('')
   const projectQuery = useProjectQuery(projectId)
   const historyQuery = useProjectHistoryQuery(projectId)
 
@@ -64,6 +68,7 @@ export function ProjectDetailsPage() {
   } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
+      initialAmount: '',
       currentAmount: '',
       globalComment: '',
     },
@@ -72,6 +77,7 @@ export function ProjectDetailsPage() {
   useEffect(() => {
     if (projectQuery.data) {
       reset({
+        initialAmount: projectQuery.data.initialAmount?.toString() ?? '',
         currentAmount: projectQuery.data.currentAmount?.toString() ?? '',
         globalComment: projectQuery.data.globalComment ?? '',
       })
@@ -87,7 +93,7 @@ export function ProjectDetailsPage() {
   }
 
   const editMutation = useMutation({
-    mutationFn: (values: { currentAmount?: number; globalComment?: string }) =>
+    mutationFn: (values: { initialAmount?: number; currentAmount?: number; globalComment?: string }) =>
       projectsApi.updateProject(projectId!, values),
     onSuccess: invalidateProject,
   })
@@ -108,6 +114,15 @@ export function ProjectDetailsPage() {
     onSuccess: invalidateProject,
   })
 
+  const stageTransitionMutation = useMutation({
+    mutationFn: (payload: ProjectTransitionRequest) =>
+      projectsApi.transitionProject(projectId!, payload),
+    onSuccess: async () => {
+      setRollbackComment('')
+      await invalidateProject()
+    },
+  })
+
   const timelineItems = useMemo(() => buildTimelineItems(historyQuery.data ?? [], []), [historyQuery.data])
 
   if (projectQuery.isPending || historyQuery.isPending) {
@@ -123,6 +138,17 @@ export function ProjectDetailsPage() {
   }
 
   const project = projectQuery.data
+  const previousStage = project.allowedStageTransitions.find((stage) =>
+    isBackwardStageChange(project.currentStage, stage),
+  ) as ProjectStage | undefined
+
+  const parseOptionalAmount = (value?: string) => {
+    if (value === undefined || value.trim() === '') {
+      return undefined
+    }
+
+    return Number(value)
+  }
 
   return (
     <div className="page-stack">
@@ -185,7 +211,7 @@ export function ProjectDetailsPage() {
           <div className="panel__header">
             <div>
               <h2 className="section-title">Основная информация</h2>
-              <p className="section-hint">Здесь можно обновить текущую сумму и общий комментарий.</p>
+              <p className="section-hint">Здесь можно обновить суммы сделки и общий комментарий.</p>
             </div>
           </div>
 
@@ -195,16 +221,23 @@ export function ProjectDetailsPage() {
             className="form form--compact"
             onSubmit={handleSubmit(async (values) => {
               try {
+                const nextGlobalComment = values.globalComment?.trim() ?? ''
                 setEditError(null)
                 await editMutation.mutateAsync({
-                  currentAmount: values.currentAmount ? Number(values.currentAmount) : undefined,
-                  globalComment: values.globalComment?.trim() || undefined,
+                  initialAmount: parseOptionalAmount(values.initialAmount),
+                  currentAmount: parseOptionalAmount(values.currentAmount),
+                  globalComment: nextGlobalComment !== (project.globalComment ?? '') ? nextGlobalComment : undefined,
                 })
               } catch (submissionError) {
                 setEditError(submissionError instanceof Error ? submissionError.message : 'Не удалось сохранить изменения.')
               }
             })}
           >
+            <label className="field">
+              <span>Начальная сумма</span>
+              <input type="number" min="0" step="1" {...register('initialAmount')} />
+            </label>
+
             <label className="field">
               <span>Текущая сумма</span>
               <input type="number" min="0" step="1" {...register('currentAmount')} />
@@ -244,11 +277,15 @@ export function ProjectDetailsPage() {
                   <span>Следующий этап</span>
                   <strong>{project.nextStage ? getProjectStageLabel(project.nextStage) : 'Не определён'}</strong>
                 </div>
+                <div>
+                  <span>Предыдущий этап</span>
+                  <strong>{previousStage ? getProjectStageLabel(previousStage) : 'Не определён'}</strong>
+                </div>
               </div>
 
-              {project.canAdvanceStage && project.nextStage ? (
+              {project.currentStatus === 'ACTIVE' && (project.nextStage || previousStage) ? (
                 <div className="stack-sm">
-                  {showAdvanceComment ? (
+                  {project.canAdvanceStage && project.nextStage && showAdvanceComment ? (
                     <label className="field field--full">
                       <span>Комментарий к переходу</span>
                       <textarea
@@ -260,24 +297,59 @@ export function ProjectDetailsPage() {
                     </label>
                   ) : null}
 
-                  <div className="inline-actions">
-                    <Button
-                      onClick={async () => {
-                        try {
-                          setStageError(null)
-                          await advanceMutation.mutateAsync(advanceComment)
-                        } catch (submissionError) {
-                          setStageError(submissionError instanceof Error ? submissionError.message : 'Не удалось продвинуть проект.')
-                        }
-                      }}
-                      disabled={advanceMutation.isPending}
-                    >
-                      {advanceMutation.isPending ? 'Продвигаем...' : 'Следующий этап'}
-                    </Button>
-                    <Button variant="ghost" onClick={() => setShowAdvanceComment((current) => !current)}>
-                      {showAdvanceComment ? 'Скрыть комментарий' : 'Добавить комментарий'}
-                    </Button>
-                  </div>
+                  {project.canAdvanceStage && project.nextStage ? (
+                    <div className="inline-actions">
+                      <Button
+                        onClick={async () => {
+                          try {
+                            setStageError(null)
+                            await advanceMutation.mutateAsync(advanceComment)
+                          } catch (submissionError) {
+                            setStageError(submissionError instanceof Error ? submissionError.message : 'Не удалось продвинуть проект.')
+                          }
+                        }}
+                        disabled={advanceMutation.isPending}
+                      >
+                        {advanceMutation.isPending ? 'Продвигаем...' : 'Следующий этап'}
+                      </Button>
+                      <Button variant="ghost" onClick={() => setShowAdvanceComment((current) => !current)}>
+                        {showAdvanceComment ? 'Скрыть комментарий' : 'Добавить комментарий'}
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {previousStage ? (
+                    <div className="stack-sm">
+                      <label className="field field--full">
+                        <span>Комментарий к откату</span>
+                        <textarea
+                          rows={3}
+                          placeholder="Обязательно для отката на предыдущий этап"
+                          value={rollbackComment}
+                          onChange={(event) => setRollbackComment(event.target.value)}
+                        />
+                      </label>
+                      <div className="inline-actions">
+                        <Button
+                          variant="secondary"
+                          onClick={async () => {
+                            try {
+                              setStageError(null)
+                              await stageTransitionMutation.mutateAsync({
+                                newStage: previousStage,
+                                comment: rollbackComment.trim(),
+                              })
+                            } catch (submissionError) {
+                              setStageError(submissionError instanceof Error ? submissionError.message : 'Не удалось откатить этап.')
+                            }
+                          }}
+                          disabled={stageTransitionMutation.isPending || !rollbackComment.trim()}
+                        >
+                          {stageTransitionMutation.isPending ? 'Откатываем...' : `Откатить на «${getProjectStageLabel(previousStage)}»`}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="info-block">

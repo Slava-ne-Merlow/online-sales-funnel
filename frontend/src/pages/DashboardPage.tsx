@@ -233,8 +233,7 @@ export function DashboardPage() {
               onChange={(value) =>
                 setFilters((current) => ({ ...current, source: value as DashboardFilters['source'] }))
               }
-              options={projectSourceOptions}
-              placeholder="Все источники"
+              options={[{ value: '', label: 'Все источники' }, ...projectSourceOptions]}
             />
           </label>
           <label className="field">
@@ -244,8 +243,7 @@ export function DashboardPage() {
               onChange={(value) =>
                 setFilters((current) => ({ ...current, stage: value as DashboardFilters['stage'] }))
               }
-              options={projectStageOptions}
-              placeholder="Все этапы"
+              options={[{ value: '', label: 'Все этапы' }, ...projectStageOptions]}
             />
           </label>
           <label className="field">
@@ -255,8 +253,7 @@ export function DashboardPage() {
               onChange={(value) =>
                 setFilters((current) => ({ ...current, status: value as DashboardFilters['status'] }))
               }
-              options={projectStatusOptions}
-              placeholder="Все статусы"
+              options={[{ value: '', label: 'Все статусы' }, ...projectStatusOptions]}
             />
           </label>
           <label className="field">

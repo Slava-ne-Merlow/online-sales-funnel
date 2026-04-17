@@ -127,7 +127,7 @@ class ProjectImportServiceTest {
             )
         }
             .isInstanceOfSatisfying(BadRequestException::class.java) {
-                assertThat(it.error.message).isEqualTo("Import row Проект with DONE status must be on CONTRACTED stage")
+                assertThat(it.error.message).isEqualTo("Import row Проект with DONE status must be on CONTRACTED or WAITING_FOR_PAYMENT stage")
             }
     }
 

@@ -178,13 +178,36 @@ export function AnalyticsPage() {
     amount: item.amount,
   }))
 
+  const stageAmountByStatusDonuts = analytics.statusDistribution.map((statusItem) => ({
+    status: statusItem.status,
+    title: getProjectStatusLabel(statusItem.status),
+    totalAmount: statusItem.amount,
+    count: statusItem.count,
+    rows: analytics.stageStatusDistribution
+      .filter((item) => item.status === statusItem.status && item.amount > 0)
+      .map((item) => ({
+        name: `${getProjectStageLabel(item.stage)} (${item.percentOfStatusAmount.toFixed(1)}%)`,
+        value: item.amount,
+      })),
+  }))
+
+  const averageStageAmountBars = analytics.stageDistribution.map((item) => ({
+    label: getProjectStageLabel(item.stage),
+    averageAmount: item.count ? item.amount / item.count : 0,
+  }))
+
+  const averageStatusAmountBars = analytics.statusDistribution.map((item) => ({
+    label: getProjectStatusLabel(item.status),
+    averageAmount: item.count ? item.amount / item.count : 0,
+  }))
+
   return (
     <div className="page-stack">
       <section className="panel analytics-filters">
         <div className="panel__header analytics-filters__header">
           <div>
             <h2 className="section-title">Аналитика</h2>
-            <p className="section-hint">Период и диапазон дат считаются по последнему изменению проекта.</p>
+            <p className="section-hint">Период и диапазон дат считаются по событиям смены этапа или статуса.</p>
           </div>
         </div>
 
@@ -283,6 +306,32 @@ export function AnalyticsPage() {
         </ChartCard>
       </div>
 
+      <div className="chart-grid chart-grid--status-donuts">
+        {stageAmountByStatusDonuts.map((group) => (
+          <ChartCard
+            key={group.status}
+            title={`Этапы: ${group.title}`}
+            subtitle={`${formatNumber(group.count)} проектов · ${formatCurrency(group.totalAmount)}`}
+          >
+            {group.rows.length ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie data={group.rows} dataKey="value" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={2}>
+                    {group.rows.map((item, index) => (
+                      <Cell key={item.name} fill={chartPalette[index % chartPalette.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState title="Нет суммы" description="В этом статусе нет проектов с суммой для выбранного периода." />
+            )}
+          </ChartCard>
+        ))}
+      </div>
+
       <div className="chart-grid">
         <ChartCard title="Количество проектов по этапам">
           <ResponsiveContainer width="100%" height={280}>
@@ -304,6 +353,32 @@ export function AnalyticsPage() {
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Bar dataKey="count" fill="#445d7a" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      <div className="chart-grid">
+        <ChartCard title="Средний чек по этапам" subtitle="Текущая сумма / количество проектов">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={averageStageAmountBars}>
+              <CartesianGrid stroke="#e8edf4" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} angle={-12} textAnchor="end" height={58} />
+              <YAxis />
+              <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              <Bar dataKey="averageAmount" fill="#2d5f8f" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Средний чек по статусам" subtitle="Помогает увидеть, где сконцентрированы крупные сделки">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={averageStatusAmountBars}>
+              <CartesianGrid stroke="#e8edf4" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} />
+              <YAxis />
+              <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              <Bar dataKey="averageAmount" fill="#b27a28" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

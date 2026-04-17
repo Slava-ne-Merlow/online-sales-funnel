@@ -2,11 +2,14 @@ package de.vyacheslav.kushchenko.sales.funnel.service
 
 import de.vyacheslav.kushchenko.sales.funnel.data.project.dao.ProjectEntity
 import de.vyacheslav.kushchenko.sales.funnel.data.project.dao.ProjectEntity.Companion.asEntity
+import de.vyacheslav.kushchenko.sales.funnel.data.project.dao.ProjectHistoryEntity
 import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.AnalyticsPeriod
+import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectEventType
 import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectSource
 import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectStage
 import de.vyacheslav.kushchenko.sales.funnel.data.project.enum.ProjectStatus
 import de.vyacheslav.kushchenko.sales.funnel.data.project.model.Project
+import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectHistoryRepository
 import de.vyacheslav.kushchenko.sales.funnel.data.project.repository.ProjectRepository
 import de.vyacheslav.kushchenko.sales.funnel.data.user.enum.UserRole
 import de.vyacheslav.kushchenko.sales.funnel.data.user.model.User
@@ -23,11 +26,13 @@ import java.util.UUID
 class ProjectAnalyticsServiceTest {
 
     private val projectRepository = mockk<ProjectRepository>()
+    private val projectHistoryRepository = mockk<ProjectHistoryRepository>()
     private val projectAccessService = ProjectAccessService()
     private val userService = mockk<UserService>()
 
     private val projectAnalyticsService = ProjectAnalyticsService(
         projectRepository = projectRepository,
+        projectHistoryRepository = projectHistoryRepository,
         projectAccessService = projectAccessService,
         userService = userService,
     )
@@ -60,6 +65,16 @@ class ProjectAnalyticsServiceTest {
             ),
         )
         every { projectRepository.findAll(any<Specification<ProjectEntity>>()) } returns projects.map { it.asEntity() }
+        every { projectHistoryRepository.findAllByEventTypeInAndCreatedAtBetween(any(), any(), any()) } returns projects.map {
+            ProjectHistoryEntity(
+                projectId = it.id!!,
+                eventType = ProjectEventType.STAGE_CHANGED,
+                oldStage = ProjectStage.PROPOSAL,
+                newStage = it.currentStage,
+                actorUserId = actor.id!!,
+                createdAt = it.updatedAt,
+            )
+        }
         every { userService.getDisplayNames(any()) } returns mapOf(responsibleUserId to "Alice")
 
         val result = projectAnalyticsService.getAnalytics(
@@ -79,6 +94,11 @@ class ProjectAnalyticsServiceTest {
         assertThat(result.stageDistribution.first { it.stage.name == ProjectStage.INVOICE_ISSUED.name }.count).isEqualTo(1)
         assertThat(result.statusDistribution.first { it.status.name == ProjectStatus.DONE.name }.amount)
             .isEqualByComparingTo("450.00")
+        assertThat(
+            result.stageStatusDistribution.first {
+                it.status.name == ProjectStatus.DONE.name && it.stage.name == ProjectStage.WAITING_FOR_PAYMENT.name
+            }.amount
+        ).isEqualByComparingTo("450.00")
         assertThat(result.sourceDistribution.first { it.source.name == ProjectSource.TENDER.name }.count).isEqualTo(2)
         assertThat(result.funnelSummary.first { it.stage.name == ProjectStage.WAITING_FOR_PAYMENT.name }.amount)
             .isEqualByComparingTo("450.00")

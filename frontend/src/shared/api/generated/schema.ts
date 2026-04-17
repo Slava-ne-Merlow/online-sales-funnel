@@ -276,7 +276,7 @@ export interface components {
             user: components["schemas"]["UserDto"];
         };
         /** @enum {string} */
-        ProjectStage: "QUALIFICATION" | "PROPOSAL" | "CONTRACTED" | "INVOICE_ISSUED" | "WAITING_FOR_PAYMENT";
+        ProjectStage: "QUALIFICATION" | "PROPOSAL" | "INVOICE_ISSUED" | "CONTRACTED" | "WAITING_FOR_PAYMENT";
         /** @enum {string} */
         ProjectStatus: "ACTIVE" | "ON_HOLD" | "LOST" | "DONE" | "INACTIVE";
         /** @enum {string} */
@@ -284,7 +284,7 @@ export interface components {
         /** @enum {string} */
         AnalyticsPeriod: "LAST_WEEK" | "LAST_MONTH" | "LAST_YEAR" | "ALL_TIME";
         /** @enum {string} */
-        ProjectEventType: "CREATED" | "STAGE_CHANGED" | "STATUS_CHANGED" | "STAGE_STATUS_CHANGED" | "AMOUNT_CHANGED" | "GLOBAL_COMMENT_CHANGED" | "SOURCE_SET" | "RESTORED_FROM_PAUSE";
+        ProjectEventType: "CREATED" | "STAGE_CHANGED" | "STATUS_CHANGED" | "STAGE_STATUS_CHANGED" | "AMOUNT_CHANGED" | "INITIAL_AMOUNT_CHANGED" | "GLOBAL_COMMENT_CHANGED" | "SOURCE_SET" | "RESTORED_FROM_PAUSE";
         /** @enum {string} */
         ProjectSortField: "CREATED_AT" | "UPDATED_AT" | "AMOUNT";
         /** @enum {string} */
@@ -330,6 +330,7 @@ export interface components {
             responsibleUserId?: string;
         };
         UpdateProjectRequest: {
+            initialAmount?: number;
             currentAmount?: number;
             globalComment?: string;
         };
@@ -376,6 +377,7 @@ export interface components {
             inactiveAmount: number;
             stageDistribution: components["schemas"]["ProjectStageDistributionItemDto"][];
             statusDistribution: components["schemas"]["ProjectStatusDistributionItemDto"][];
+            stageStatusDistribution: components["schemas"]["ProjectStageStatusDistributionItemDto"][];
             sourceDistribution: components["schemas"]["ProjectSourceDistributionItemDto"][];
             periodTrend: components["schemas"]["ProjectTrendPointDto"][];
             funnelSummary: components["schemas"]["ProjectFunnelSummaryItemDto"][];
@@ -394,6 +396,14 @@ export interface components {
             count: number;
             amount: number;
             percentOfTotalAmount: number;
+        };
+        ProjectStageStatusDistributionItemDto: {
+            stage: components["schemas"]["ProjectStage"];
+            status: components["schemas"]["ProjectStatus"];
+            /** Format: int32 */
+            count: number;
+            amount: number;
+            percentOfStatusAmount: number;
         };
         ProjectSourceDistributionItemDto: {
             source: components["schemas"]["ProjectSource"];
